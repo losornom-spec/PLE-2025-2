@@ -152,6 +152,16 @@ datos %$% unique(semestre)
 datos %$% unique(total_matriculados)
 
 
+# Lectura de mapas de departamento y municipios
+
+departamento <- read
+
+
+
+
+
+
+
 
 
 # Guardado de datos
