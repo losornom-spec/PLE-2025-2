@@ -5,6 +5,7 @@ require(janitor)
 require(naniar)
 require(visdat)
 require(Amelia)
+require(sf)
 
 datos <- read_csv(r"(C:\Users\Victus\Downloads\MEN_MATRICULA_ESTADISTICA_ES_20251029.csv)")
 
@@ -154,14 +155,16 @@ datos %$% unique(total_matriculados)
 
 # Lectura de mapas de departamento y municipios
 
-departamento <- read
+departamento <- read_sf(r"(C:\Users\Victus\Documents\DOC_UNAL\SemestreVIII\PLE-2025-2\Departament_Maps_2024\MGN_ADM_DPTO_POLITICO.shp)")
+
+municipio <- read_sf(r"(C:\Users\Victus\Documents\DOC_UNAL\SemestreVIII\PLE-2025-2\Municipio_Maps_2023\MGN_ADM_MPIO_GRAFICO.shp)")
+
+# Union de los datsets
 
 
+datos1 <- merge(datos, departamento, by.x = "codigo_del_departamento_ies", by.y = "dpto_ccdgo", all.x = TRUE)
 
-
-
-
-
+datos1 <- merge(datos1, municipio, by.x = "codigo_del_municipio_ies", by.y = "mpio_ccdgo", all.x = TRUE)
 
 
 # Guardado de datos
