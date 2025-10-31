@@ -1,0 +1,175 @@
+---
+title: "Clase 6"
+author: "Mauricio Mazo"
+date: "2025-10-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+# Análisis de Base de Datos Recién Nacidos {.tabset}
+
+Analicemos la base de datos de recién nacidos en el hospital Manuel Uribe Ángel (MUA) en el periodo que va desde 2021 hasta 2023.
+
+<!--- El chunk de R se abre con Ctrl + Alt + i--->
+
+```{r}
+require(tidyverse)
+require(magrittr)
+require(plotly)
+nacidos <- read_delim(r"(C:\Users\Victus\Downloads\Nacidos_Vivos_en_Hospital_Manuel_Uribe_Angel_20240314.csv)", delim=";")
+```
+
+La base de datos tiene filas o registros `r nrow(nacidos) `  y variables o columnas `r ncol(nacidos)`. Las variables son las siguientes:
+```{r}
+nacidos %>% names()
+```
+
+El __objetivo__ de este análisis se centra en relacionar las variables de interés *peso al nacer* (en gramos) y *talla al nacer* (centímetros) con ciertas características biológicas y socio-demográficas.
+
+## Peso versus Talla:
+
+```{r}
+fig1 <- nacidos %>% ggplot(aes(x=talla_centimetros, y=peso_gramos,
+                       color=sexo))+
+  geom_point()
+fig1 %>% ggplotly()
+```
+
+A mayor talla se tiene mayor peso.
+
+## Peso versus tiempo de gestación:
+
+```{r}
+fig2 <- nacidos %>% filter(tiempo_de_gestacion>20 & 
+                             tiempo_de_gestacion<37) %>% ggplot(aes(x=tiempo_de_gestacion,
+                               y=peso_gramos, color=sexo))+
+  geom_point() + geom_smooth()
+fig2 %>% ggplotly()
+```
+
+## Peso versus nivel educativo del padre:
+
+```{r}
+nacidos %>% ggplot(aes(x=nivel_educativo_padre, y=peso_gramos))+
+  geom_boxplot()+
+  coord_flip()
+```
+
+## Peso versus nivel educativo de la madre:
+
+```{r}
+nacidos %>% ggplot(aes(x=nivel_educativo_de_la_madre, y=peso_gramos))+
+  geom_boxplot()+
+  coord_flip()
+```
+
+No parece existir una relación entre el Peso y el nivel educativo de la madre.
+
+# Análisis de variables categóricas {.tabset}
+
+Analicemos la distribución de algunas de las variables categóricas:
+
+## Nivel educativo de la madre:
+
+```{r}
+#nacidos %>% ggplot(aes(x=nivel_educativo_de_la_madre))+
+#  geom_bar() + coord_flip()
+ nacidos %>% mutate(nivel_ed_madre=fct_lump(nivel_educativo_de_la_madre,n=3,other_level = "OTROS")) %>% count(nivel_ed_madre) %>% arrange(desc(n)) %>% ggplot(aes(x=reorder(nivel_ed_madre,n), y=n))+geom_col()+coord_flip()+
+  xlab("Nivel educativo de la madre")
+```
+
+
+# identificar las categorias unicas
+
+```{r}
+nacidos %$% unique(nombre_administradora)
+
+```
+
+
+
+
+## Relacionados con SURA
+
+```{r}
+# Detectar patron en una cadena de texto
+
+#str_detect(nacidos$nombre_administradora, ".*SURA.*")   # TRUE si existe el patron
+
+nacidos %$% str_subset(nombre_administradora, ",*SURA.*") %>% unique()
+
+```
+
+
+
+## Remplazamos sin guardar los SURA 
+
+
+```{r}
+nacidos %>% mutate(Administardora=str_replace_all(nombre_administradora, ".*SURA.*", "SURA"),
+                   Administardora = fct_lump(Administardora, prop = 0.03, other_level = "OTRAS")) %>% 
+  count(Administardora) %>% 
+  arrange(desc(n)) %>%
+  ggplot(aes(y=reorder(Administardora,n), x=n))+
+  geom_col()+
+  geom_text(aes(label=n), hjust= -0.5)
+  
+```
+
+
+```{r}
+require("rAmCharts4")
+```
+
+
+## Veamos un grafico de torta
+
+```{r}
+nacidos %>% mutate(Administradora=str_replace_all(nombre_administradora, ".*SURA.*", "SURA"),
+                   Administradora = fct_lump(Administradora, prop = 0.03, other_level = "OTRAS")) %>% 
+  count(Administradora) %$% 
+  amPieChart(data =., category = "Administradora", value = "n")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
