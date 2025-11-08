@@ -159,12 +159,23 @@ departamento <- read_sf(r"(C:\Users\Victus\Documents\DOC_UNAL\SemestreVIII\PLE-2
 
 municipio <- read_sf(r"(C:\Users\Victus\Documents\DOC_UNAL\SemestreVIII\PLE-2025-2\Municipio_Maps_2023\MGN_ADM_MPIO_GRAFICO.shp)")
 
+
+st_write(departamento, "C:/Users/Victus/Documents/DOC_UNAL/SemestreVIII/PLE-2025-2/Departament_Maps_2024/MGN_ADM_DPTO_POLITICO.geojson")
+
+st_write(municipio, "C:/Users/Victus/Documents/DOC_UNAL/SemestreVIII/PLE-2025-2/Municipio_Maps_2023/MGN_ADM_MPIO_GRAFICO.geojson")
+
+departamento1 <- read_sf("https://raw.githubusercontent.com/losornom-spec/PLE-2025-2/main/Departament_Maps_2024/MGN_ADM_DPTO_POLITICO.geojson")
+
+municipio1 <- read_sf("https://github.com/losornom-spec/PLE-2025-2/blob/main/Departament_Maps_2024/MGN_ADM_DPTO_POLITICO.geojson")
+
 # Union de los datsets
 
 
 datos1 <- merge(datos, departamento, by.x = "codigo_del_departamento_ies", by.y = "dpto_ccdgo", all.x = TRUE)
 
 datos1 <- merge(datos1, municipio, by.x = "codigo_del_municipio_ies", by.y = "mpio_ccdgo", all.x = TRUE)
+
+
 
 
 # Guardado de datos

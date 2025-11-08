@@ -1,0 +1,47 @@
+---
+title: "Trabajo2R"
+author:
+  - name: "Luis Gabriel Osorno Muñoz"
+    affiliation: "ID: 1040976099" # Reemplaza con el ID de Luis
+    email: "losornom@unal.edu.co" # Reemplaza con el correo de Luis
+  - name: "Yamid Urrego Galvis"
+    affiliation: "ID: 1000756146" # Reemplaza con el ID del segundo autor
+    email: "yurregog@unal.edu.co" # Reemplaza con el correo del segundo autor
+date: "2025-10-17"
+output: html_document
+---
+
+
+# Luis Gabriel Osorno Muñoz - 1040976099 - losornom@unal.edu.co
+
+# Yamid Urrego Galvis - 1000756146 - yurregog@unal.edu.co
+
+
+```{r}
+ComposicionHogar <- read.csv(
+  file = unz(
+    r"(datos\Caracteristicas y composicion del hogar.zip)",
+    "Caracter\xa1sticas y composici\xa2n del hogar.CSV"
+    ),
+  sep = ";"
+  )
+```
+
+```{r}
+FuerzaTrabajo <- read.csv(
+  file = unz(
+    r"(datos\Fuerza de trabajo.zip)",
+    "Fuerza de trabajo.CSV"
+    ),
+  sep = ";"
+  )
+```
+
+
+```{r}
+
+```
+
+
+
+

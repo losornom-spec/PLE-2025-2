@@ -1,0 +1,78 @@
+---
+title: "Clase10"
+author: "Luis Gabriel Osorno Muñoz"
+date: "2025-11-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Trabajando con R y Python
+
+En esta clase veremos como trabajar con objetos de python y R, y viseversa
+
+El primer paso es cargar el paquete "Reticulate"
+
+```{r}
+require(reticulate)
+```
+
+
+Vamos a crear un objeto de python
+
+
+```{python}
+import numpy as np
+matrix_python = np.array([[2, 7, 4], [-1, 3, 5]])
+```
+
+Vamos a crear un objeto R
+
+```{r}
+matrix_R = matrix(c(0.8, 3, 0.5, -1, 1, 2), nrow = 2)
+```
+
+Sumar las dos matrices en R
+
+```{r}
+matrix_R + py$matrix_python
+```
+
+```{python}
+matrix_python + r.matrix_R
+```
+
+# Lectura de BD en python
+
+
+```{python}
+import pandas as pd
+migrantes = pd.read_csv(r"C:/Users/Victus/Downloads/Colombianos_registrados_en_el_exterior_20240201.csv")
+```
+
+# Limpiamos los nombres de las variables
+
+
+```{python}
+!pip install Pyjanitor
+```
+
+```{r}
+require(magrittr)
+require(tidyverse)
+require(ggplot2)
+```
+
+
+
+
+```{r}
+py$migrantes %>% filter(genero %in% c("MASCULINO", "FEMENINO")) %>% 
+  ggplot(aes(y=edad_anos, fill=genero))+
+  geom_density(alpha=0.4)
+```
+
+
+
