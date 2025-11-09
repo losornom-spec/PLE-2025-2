@@ -37,17 +37,20 @@ FuerzaTrabajo <- read.csv(
   )
 ```
 
+```{r}
+# librerias usadas
+library(dplyr)
+library(ggplot2)
+```
+
 **1.** En promedio, ¿cuántos individuos hay por hogar? ¿Cuál es la desviación estándar? 
 Realice un gráfico boxplot y un histograma de esta variable.
 Saque conclusiones.
 
 ```{r}
-library(dplyr)
-library(ggplot2)
-
-# 1. Calcular el número de individuos por hogar 
+# Calcular el número de individuos por hogar 
 Conteo_familia <- ComposicionHogar %>%
-  # Agrupa los datos directorio
+  # Agrupa los datos por directorio
   group_by(DIRECTORIO) %>%
   # Conteo de filas por familia
   summarise(
@@ -82,7 +85,7 @@ ggplot(Conteo_familia, aes(x = "", y = Num_Individuos)) +
 ggplot(Conteo_familia, aes(x = Num_Individuos)) +
   geom_histogram(binwidth = 1, fill = "seagreen", color = "black") +
   labs(
-    title = "Histograma del Número de Individuos por Hogar 📊",
+    title = "Histograma del Número de Individuos por Hogar",
     x = "Número de Individuos",
     y = "Frecuencia (Número de Hogares)"
   ) 
@@ -96,7 +99,7 @@ A partir de la información obtenida, podemos decir que en promedio hay entre tr
 Con el histograma podemos notar una distribución asimetrica positiva ya que la mayoria de datos se acumulan a la izquierda y se forma una cola a derecha, esto se debe especialmente a la incidencia de datos atipicos
 
 
-**2.** 2. En promedio, ¿cuáles son los ingresos mensuales por hogar? ¿Cuál es la desviación estándar? Realice un gráfico boxplot y un histograma de esta variable. Saque conclusiones.
+**2.** En promedio, ¿cuáles son los ingresos mensuales por hogar? ¿Cuál es la desviación estándar? Realice un gráfico boxplot y un histograma de esta variable. Saque conclusiones.
 
 
 # preguntar al profesor
