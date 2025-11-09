@@ -37,11 +37,84 @@ FuerzaTrabajo <- read.csv(
   )
 ```
 
+**1.** En promedio, ¿cuántos individuos hay por hogar? ¿Cuál es la desviación estándar? 
+Realice un gráfico boxplot y un histograma de esta variable.
+Saque conclusiones.
 
 ```{r}
+library(dplyr)
+library(ggplot2)
+
+# 1. Calcular el número de individuos por hogar 
+Conteo_familia <- ComposicionHogar %>%
+  # Agrupa los datos directorio
+  group_by(DIRECTORIO) %>%
+  # Conteo de filas por familia
+  summarise(
+    Num_Individuos = n()
+  ) %>%
+  ungroup()
+
+# Promedio y Desviación Estándar 
+estadisticos <- Conteo_familia %>%
+  summarise(
+    Promedio = mean(Num_Individuos),
+    Desv_Estandar = sd(Num_Individuos),
+    Mediana = median(Num_Individuos)
+  )
+
 
 ```
 
 
+```{r}
+ggplot(Conteo_familia, aes(x = "", y = Num_Individuos)) +
+  geom_boxplot(fill = "#66CDAA", color = "darkblue") +
+  geom_point(data = data.frame(y = estadisticos$Promedio), aes(x = "", y = y), color = "red", size = 3) +
+  labs(
+    title = "Boxplot del Número de Individuos por Hogar",
+    y = "Número de Individuos",
+    x = ""
+  )
+```
+
+```{r}
+ggplot(Conteo_familia, aes(x = Num_Individuos)) +
+  geom_histogram(binwidth = 1, fill = "seagreen", color = "black") +
+  labs(
+    title = "Histograma del Número de Individuos por Hogar 📊",
+    x = "Número de Individuos",
+    y = "Frecuencia (Número de Hogares)"
+  ) 
+```
 
 
+**Conclusiones:**
+
+A partir de la información obtenida, podemos decir que en promedio hay entre tres y dos individuos por hogar con una desviación de uno a dos individuos, lo que nos indica que en Colombia es más común que los hogares estén compuestos por una cantidad reducida de personas. En el boxplot podemos observar con más detalle este comportamiento donde se nota en principio que el tercer cuantil esta en el valor 4, lo que indica que el 75% de los hogares tiene 4 o menos integrantes, esto apoya el hecho de que los datos están concentrados alrededor de la media, sin embargo, se observa claramente una cantidad importante de outliers en los que  existe un hogar con 24, lo cual es inusual y deberia revisarse con más detalle, pero podría ser posible si se trata de alguna finca o edificio particular. La mediana es 3, valor cercano a la media y que nos dice que el 50% de los hogares tiene 3 o menos integrantes.
+
+Con el histograma podemos notar una distribución asimetrica positiva ya que la mayoria de datos se acumulan a la izquierda y se forma una cola a derecha, esto se debe especialmente a la incidencia de datos atipicos
+
+
+**2.** 2. En promedio, ¿cuáles son los ingresos mensuales por hogar? ¿Cuál es la desviación estándar? Realice un gráfico boxplot y un histograma de esta variable. Saque conclusiones.
+
+
+# preguntar al profesor
+
+si para los ingresos mensuales solo se toma los ingresos del empleo o se deben tomar todas las variables
+que aportan al ingreso mensual:
+
+- p8624     Ingreso por empleo.
+- P6595S1   Recibió alimentos como parte del pago.
+- P6605S1   Recibió vivienda como parte del pago.
+- P6623S1   Otros ingresos en especie
+- P8626S1   Subsidio de alimentación
+- P8628S1   Auxilio de transporte
+- P8630S1   Subsidio familiar
+- P8631S1   Recibió primas
+- p6750     Ganancia neta u honorarios de la actividad
+- P8636S1   Ingresos por trabajo extra u otras ocupaciones
+- P8640S1   Ingreso por concepto de trabajo
+- P8642S1   Ingreso por concepto de jubilación , pensión
+- P8644S1   Sostenimiento hijos menores de edad
+- P8646S1   Ingresos por arriendo
