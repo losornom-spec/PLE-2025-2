@@ -41,6 +41,9 @@ FuerzaTrabajo <- read.csv(
 # librerias usadas
 library(dplyr)
 library(ggplot2)
+library(maps)
+library(sf)
+library(leaflet)
 ```
 
 **1.** En promedio, ¿cuántos individuos hay por hogar? ¿Cuál es la desviación estándar? 
@@ -66,7 +69,7 @@ estadisticos <- Conteo_familia %>%
     Mediana = median(Num_Individuos)
   )
 
-
+estadisticos
 ```
 
 
@@ -94,17 +97,16 @@ ggplot(Conteo_familia, aes(x = Num_Individuos)) +
 
 **Conclusiones:**
 
-A partir de la información obtenida, podemos decir que en promedio hay entre tres y dos individuos por hogar con una desviación de uno a dos individuos, lo que nos indica que en Colombia es más común que los hogares estén compuestos por una cantidad reducida de personas. En el boxplot podemos observar con más detalle este comportamiento donde se nota en principio que el tercer cuantil esta en el valor 4, lo que indica que el 75% de los hogares tiene 4 o menos integrantes, esto apoya el hecho de que los datos están concentrados alrededor de la media, sin embargo, se observa claramente una cantidad importante de outliers en los que  existe un hogar con 24, lo cual es inusual y deberia revisarse con más detalle, pero podría ser posible si se trata de alguna finca o edificio particular. La mediana es 3, valor cercano a la media y que nos dice que el 50% de los hogares tiene 3 o menos integrantes.
+A partir de la información obtenida, podemos decir que en promedio hay entre tres y dos individuos por hogar con una desviación de uno a dos individuos, lo que nos indica que en Colombia es más común que los hogares estén compuestos por una cantidad reducida de personas. En el boxplot podemos observar con más detalle este comportamiento donde se nota en principio que el tercer cuantil esta en el valor 4, lo que indica que el 75% de los hogares tiene 4 o menos integrantes, esto apoya el hecho de que los datos están concentrados alrededor de la media, sin embargo, se observa claramente una cantidad importante de outliers en los que  existe un hogar con 24, lo cual es inusual y debería revisarse con más detalle, pero podría ser posible si se trata de alguna finca o edificio particular. La mediana es 3, valor cercano a la media y que nos dice que el 50% de los hogares tiene 3 o menos integrantes.
 
-Con el histograma podemos notar una distribución asimetrica positiva ya que la mayoria de datos se acumulan a la izquierda y se forma una cola a derecha, esto se debe especialmente a la incidencia de datos atipicos
+Con el histograma podemos notar una distribución asimétrica positiva ya que la mayoría de datos se acumulan a la izquierda y se forma una cola a derecha, esto se debe especialmente a la incidencia de datos atípicos
 
 
 **2.** En promedio, ¿cuáles son los ingresos mensuales por hogar? ¿Cuál es la desviación estándar? Realice un gráfico boxplot y un histograma de esta variable. Saque conclusiones.
 
-
 # preguntar al profesor
 
-si para los ingresos mensuales solo se toma los ingresos del empleo o se deben tomar todas las variables
+para los ingresos mensuales solo se toma los ingresos del empleo o se deben tomar todas las variables
 que aportan al ingreso mensual:
 
 - p8624     Ingreso por empleo.
@@ -121,3 +123,118 @@ que aportan al ingreso mensual:
 - P8642S1   Ingreso por concepto de jubilación , pensión
 - P8644S1   Sostenimiento hijos menores de edad
 - P8646S1   Ingresos por arriendo
+
+suponiendo que solo es con ingreso por empleo:
+
+```{r}
+Ingreso_mensual <- FuerzaTrabajo %>%
+  group_by(DIRECTORIO) %>%
+  # Suma de los ingresos por empleo para cada hogar
+  summarise(
+    Ingreso_hogar = sum(P8624,na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+
+estadisticos2 <- Ingreso_mensual %>%
+  summarise(
+    Promedio = mean(Ingreso_hogar),
+    Desv_Estandar = sd(Ingreso_hogar),
+  )
+
+estadisticos2
+
+
+# hay datos outlier incluso uno que alcanza 131.300.000
+# se deberia definir un limite ya que esto impide visualizar el resto de información
+datos_sin_outliers <- Ingreso_mensual %>%
+  filter(Ingreso_hogar <= 5000000)  
+
+```
+
+```{r}
+ggplot(datos_sin_outliers, aes(x = "", y = Ingreso_hogar)) +
+  geom_boxplot(fill = "#66CDAA", color = "darkblue") +
+  geom_point(data = data.frame(y = estadisticos2$Promedio), aes(x = "", y = y), color = "red", size = 3) +
+  labs(
+    title = "Boxplot los ingresos mensuales por hogar",
+    y = "Ingresos mensuales",
+    x = ""
+  )
+```
+
+```{r}
+ggplot(datos_sin_outliers, aes(x = Ingreso_hogar)) +
+  geom_histogram(fill = "seagreen", color = "black") +
+  labs(
+    title = "Histograma de los ingresos mensuales por hogar",
+    x = "Ingresos mensuales",
+    y = "Frecuencia (Número de Hogares)"
+  ) 
+```
+
+
+
+
+**3.** Realice un gráfico nube de puntos de los ingresos mensuales por hogar versus el número de individuos por hogar. ¿Qué observa?
+
+
+```{r}
+Datos_unidos <- inner_join(Conteo_familia, datos_sin_outliers, by = "DIRECTORIO")
+
+ggplot(Datos_unidos, aes(x = Num_Individuos, y = Ingreso_hogar)) +
+  geom_point(color = "darkblue", size = 2) +
+  # línea de tendencia 
+  geom_smooth(method = "lm", se = FALSE, color = "red", linetype = "dashed") +
+  
+ 
+  labs(
+    title = "Relación entre Ingreso del Hogar y Número de Individuos",
+    x = "Número de Individuos por Hogar",
+    y = "Ingreso Mensual Total por Hogar"
+  )
+
+
+```
+
+
+
+
+**4.** Realice un mapa de Colombia considerando los ingresos mensuales promedio por hogar para los departamentos con colores por 4 categorías (definidas por usted) e incluyendo la respectiva leyenda.
+
+# incompleto
+
+```{r}
+
+# Crear el mapa del mundo con polígonos
+mapa_mundo <- maps::map("world", fill = TRUE, plot = FALSE)
+
+
+mapa_sf <- sf::st_as_sf(mapa_mundo)
+
+# Filtrar Colombia
+colombia <- mapa_sf[mapa_sf$ID == "Colombia", ]
+
+
+leaflet(colombia) %>%
+  addTiles() %>%
+  addPolygons(
+    fillColor = "orange",
+    color = "black",
+    weight = 1,
+    fillOpacity = 0.5
+  )
+```
+
+
+
+**5.** Para el departamento con mayores ingresos mensuales promedio por hogar, considere los ingresos mensuales promedio por municipio y realice un mapa con colores por 3 categorías (definidas por usted) e incluyendo la respectiva leyenda.
+
+
+
+
+**6.** Seleccione una de las demás bases de datos de la pestaña Microdatos (“Atención integral de los niños y niñas menores de 5 años”, “Condiciones de vida del hogar y tenencia de bienes (Beneficiarios F.E.A)”, “Condiciones de vida del hogar y tenencia de bienes (programas)”, etc.) que sea de su interés y plantee dos preguntas relacionadas con dicha base de datos, respondiendo con gráficos o tablas de resumen.
+
+
+
+**7.** Con base en las tres bases de datos anteriores, plantee 10 preguntas que sean de su interés y que implique “UNIR” las tres bases de datos.
