@@ -16,6 +16,10 @@ output: html_document
 
 # Yamid Urrego Galvis - 1000756146 - yurregog@unal.edu.co
 
+```{r}
+rm(list = ls())
+```
+
 
 ```{r}
 ComposicionHogar <- read.csv(
@@ -39,12 +43,17 @@ FuerzaTrabajo <- read.csv(
 
 ```{r}
 # librerias usadas
+library(tidyverse)
 library(dplyr)
 library(ggplot2)
+library(plotly)
 library(maps)
 library(sf)
 library(leaflet)
+library(magrittr)
+library(geodata)
 ```
+
 
 **1.** En promedio, ¿cuántos individuos hay por hogar? ¿Cuál es la desviación estándar? 
 Realice un gráfico boxplot y un histograma de esta variable.
@@ -52,174 +61,274 @@ Saque conclusiones.
 
 ```{r}
 # Calcular el número de individuos por hogar 
-Conteo_familia <- ComposicionHogar %>%
-  # Agrupa los datos por directorio
-  group_by(DIRECTORIO) %>%
-  # Conteo de filas por familia
-  summarise(
-    Num_Individuos = n()
-  ) %>%
+
+Conteo_Hogar <- ComposicionHogar %>%
+  group_by(DIRECTORIO, SECUENCIA_P) %>%
+  summarise(Num_Individuos = n()) %>%
   ungroup()
 
 # Promedio y Desviación Estándar 
-estadisticos <- Conteo_familia %>%
+
+EstadisticosHogar <- Conteo_Hogar %>%
   summarise(
     Promedio = mean(Num_Individuos),
     Desv_Estandar = sd(Num_Individuos),
     Mediana = median(Num_Individuos)
   )
 
-estadisticos
+EstadisticosHogar
 ```
 
 
 ```{r}
-ggplot(Conteo_familia, aes(x = "", y = Num_Individuos)) +
+p0 <- ggplot(Conteo_Hogar, aes(x = "", y = Num_Individuos)) +
   geom_boxplot(fill = "#66CDAA", color = "darkblue") +
-  geom_point(data = data.frame(y = estadisticos$Promedio), aes(x = "", y = y), color = "red", size = 3) +
+  geom_point(data = data.frame(y = EstadisticosHogar$Promedio), aes(x = "", y = y), color = "red", size = 3) +
   labs(
     title = "Boxplot del Número de Individuos por Hogar",
     y = "Número de Individuos",
     x = ""
   )
+
+ggplotly(p0)
 ```
 
 ```{r}
-ggplot(Conteo_familia, aes(x = Num_Individuos)) +
+p1 <- ggplot(Conteo_Hogar, aes(x = Num_Individuos)) +
   geom_histogram(binwidth = 1, fill = "seagreen", color = "black") +
   labs(
     title = "Histograma del Número de Individuos por Hogar",
     x = "Número de Individuos",
     y = "Frecuencia (Número de Hogares)"
   ) 
+ggplotly(p1)
 ```
 
 
 **Conclusiones:**
 
-A partir de la información obtenida, podemos decir que en promedio hay entre tres y dos individuos por hogar con una desviación de uno a dos individuos, lo que nos indica que en Colombia es más común que los hogares estén compuestos por una cantidad reducida de personas. En el boxplot podemos observar con más detalle este comportamiento donde se nota en principio que el tercer cuantil esta en el valor 4, lo que indica que el 75% de los hogares tiene 4 o menos integrantes, esto apoya el hecho de que los datos están concentrados alrededor de la media, sin embargo, se observa claramente una cantidad importante de outliers en los que  existe un hogar con 24, lo cual es inusual y debería revisarse con más detalle, pero podría ser posible si se trata de alguna finca o edificio particular. La mediana es 3, valor cercano a la media y que nos dice que el 50% de los hogares tiene 3 o menos integrantes.
+A partir de la información obtenida, podemos decir que en promedio hay entre dos y tres individuos por hogar con una desviación de uno a dos individuos, lo que nos indica que en Colombia es más común que los hogares estén compuestos por una cantidad reducida de personas. En el boxplot podemos observar con más detalle este comportamiento donde se nota en principio que el tercer cuantil esta en el valor 4, lo que indica que el 75% de los hogares tienen 4 o menos integrantes, esto apoya el hecho de que los datos están concentrados alrededor de la media, sin embargo, se observa claramente una cantidad importante de outliers en los que existe un hogar con 24 personas, lo cual es inusual y debería revisarse con más detalle, pero podría ser posible si se trata de alguna finca o edificio particular. La mediana es 3, valor cercano a la media y que nos dice que el 50% de los hogares tiene 3 o menos integrantes.
 
-Con el histograma podemos notar una distribución asimétrica positiva ya que la mayoría de datos se acumulan a la izquierda y se forma una cola a derecha, esto se debe especialmente a la incidencia de datos atípicos
+Con el histograma podemos notar una distribución asimétrica positiva ya que la mayoría de datos se acumulan a la izquierda y se forma una cola a derecha, esto se debe especialmente a la incidencia de datos atípicos. No se puede olvidar que la variable aleatoria corresponde a conteos, por lo tanto se habla de una distribución discreta. 
 
 
 **2.** En promedio, ¿cuáles son los ingresos mensuales por hogar? ¿Cuál es la desviación estándar? Realice un gráfico boxplot y un histograma de esta variable. Saque conclusiones.
 
-# preguntar al profesor
+# Preguntar al profesor
 
-para los ingresos mensuales solo se toma los ingresos del empleo o se deben tomar todas las variables
-que aportan al ingreso mensual:
+Para los ingresos mensuales se hará el cálculo de ingresos correspondientes a empleos, arriendos, subsidios, entre otros. Las variables que se hayan medido en escalas diferentes a meses (por ejemplo, trimestral, semestral, anual, etc), estas se llevarán a meses para que sean comparables. 
 
-- p8624     Ingreso por empleo.
+Las variables a considerar para el cálculo son las siguientes:
+
+- P8624     Ingreso por empleo.
+
 - P6595S1   Recibió alimentos como parte del pago.
+
 - P6605S1   Recibió vivienda como parte del pago.
-- P6623S1   Otros ingresos en especie
-- P8626S1   Subsidio de alimentación
-- P8628S1   Auxilio de transporte
-- P8630S1   Subsidio familiar
-- P8631S1   Recibió primas
-- p6750     Ganancia neta u honorarios de la actividad
+
+- P6623S1   Otros ingresos en especie.
+
+- P8626S1   Subsidio de alimentación.
+
+- P8628S1   Auxilio de transporte.
+
+- P8630S1   Subsidio familiar.
+
+- P8631S1   Recibió primas.
+
+- P1087S1A1 Recibió prima de servicios (Se divide entre 12, porque se recibe cada 12 meses).
+
+- P1087S2A1 Prima de navidad (Divide entre 12)
+
+- P1087S3A1 Prima de vacaciones (Se divide entre 12, porque se recibe cada 12 meses)
+
+- P1087S4A1 Bonificaciones.
+
+- P1087S5A1 Pagos o indemnizaciones por accidentes de trabajo.
+
+- P6750     Ganancia neta u honorarios de la actividad.
+
 - P8636S1   Ingresos por trabajo extra u otras ocupaciones
-- P8640S1   Ingreso por concepto de trabajo
-- P8642S1   Ingreso por concepto de jubilación , pensión
+
+- P8640S1   Ingreso por concepto de trabajo.
+
+- P8642S1   Ingreso por concepto de jubilación, pensión.
+
 - P8644S1   Sostenimiento hijos menores de edad
+
 - P8646S1   Ingresos por arriendo
 
-suponiendo que solo es con ingreso por empleo:
+- P8648S1   Primas por conceptos de jubilación o pensión (en los últimos 12 meses)
+
+- P8650S1A1 Ayudas en dinero de otros hogares o instituciones (en los últimos 12 meses)
+
+- P8652S1   Dinero por venta de propiedades (en los últimos 12 meses)
+
+- P8654S1   Dinero por cesantías, intereses, préstamos (en los últimos 12 meses)
+
+
+Para el cálculo de los ingresos totales mensuales para cada miembro de la familia, se tomarán cada una de estas variables descritas anteriormente y se sumarán sus respectivos ingresos. Nuevamente, los ingresos que son anuales se llevarán a meses.
 
 ```{r}
-Ingreso_mensual <- FuerzaTrabajo %>%
-  group_by(DIRECTORIO) %>%
-  # Suma de los ingresos por empleo para cada hogar
-  summarise(
-    Ingreso_hogar = sum(P8624,na.rm = TRUE)
-  ) %>%
+# Se crea una nueva variable llamada IngresoMensual
+
+FuerzaTrabajo %<>% 
+  rowwise() %>% 
+  mutate(IngresoMensual=sum(P8624,P6595S1,P6605S1, P6623S1,P8626S1, P8628S1, P8630S1,
+                            P8631S1, P1087S1A1/12, P1087S2A1/12, P1087S3A1/12, P1087S4A1,
+                            P1087S5A1, P6750, P8636S1, P8640S1, P8642S1, P8644S1, P8646S1,
+                            P8648S1/12, P8650S1A1/12, P8652S1/12, P8654S1/12, na.rm = TRUE)) %>% 
   ungroup()
 
+Ingreso_mensual <- FuerzaTrabajo %>%
+  group_by(DIRECTORIO, SECUENCIA_P) %>%
+  summarise(Ingreso_hogar = sum(IngresoMensual,na.rm = TRUE)) %>% 
+  ungroup()
+```
 
-estadisticos2 <- Ingreso_mensual %>%
+El cálculo anterior permite estimar los ingresos hogar, pero existen muchos datos atípicos que no permiten una buena visualización de los gráficos y alteran el cálculo de algunos estadísticos. Por ello, se decide eliminar todos aquellos ingresos por hogar que sean mayores a 10 millones. Esto no se hace basado en algún criterio, solo con el propósito de mejorar la visualización. 
+
+```{r}
+Ingreso_mensual %<>%
+  filter(Ingreso_hogar <= 10000000)
+
+EstadísticosHogar <- Ingreso_mensual %>%
   summarise(
     Promedio = mean(Ingreso_hogar),
     Desv_Estandar = sd(Ingreso_hogar),
+    Q1 = quantile(Ingreso_hogar, 0.25),
+    Mediana = median(Ingreso_hogar),
+    Q3 = quantile(Ingreso_hogar, 0.75),
+    Q_0.9 = quantile(Ingreso_hogar, 0.9)
   )
-
-estadisticos2
-
-
-# hay datos outlier incluso uno que alcanza 131.300.000
-# se deberia definir un limite ya que esto impide visualizar el resto de información
-datos_sin_outliers <- Ingreso_mensual %>%
-  filter(Ingreso_hogar <= 5000000)  
-
+EstadísticosHogar
 ```
 
+
 ```{r}
-ggplot(datos_sin_outliers, aes(x = "", y = Ingreso_hogar)) +
+p2<- ggplot(Ingreso_mensual, aes(x = "", y = Ingreso_hogar)) +
   geom_boxplot(fill = "#66CDAA", color = "darkblue") +
-  geom_point(data = data.frame(y = estadisticos2$Promedio), aes(x = "", y = y), color = "red", size = 3) +
+  geom_point(data = data.frame(y = EstadísticosHogar$Promedio), aes(x = "", y = y), color = "red", size = 3) +
   labs(
     title = "Boxplot los ingresos mensuales por hogar",
     y = "Ingresos mensuales",
     x = ""
   )
+ggplotly(p2)
 ```
 
 ```{r}
-ggplot(datos_sin_outliers, aes(x = Ingreso_hogar)) +
+p3 <- ggplot(Ingreso_mensual, aes(x = Ingreso_hogar)) +
   geom_histogram(fill = "seagreen", color = "black") +
   labs(
     title = "Histograma de los ingresos mensuales por hogar",
     x = "Ingresos mensuales",
     y = "Frecuencia (Número de Hogares)"
   ) 
+
+ggplotly(p3)
 ```
 
 
+**Conclusiones**
+
+El boxplot refleja una serie de datos atípicos que corresponden a ingresos por hogar muy altos, usualmente ingresos superiores a 3.9 millones por hogar. Ingresos inferiores a 0.48 millones, son propios de aproximadamente el 25% de los hogares encuestados. La media y la mediana son lejanas, lo cual es una muestra de la asimetría de la distribución de los ingresos. Incluso, si no se eliminaran datos atípicos, estos valores serian aún más distantes. 
+
+En el histograma, podemos observar que la mayoría de los hogares poseen ingresos inferiores a 1.37 millones, el cual es un valor ligeramente más alto que el salario mínimo para el año 2023 que era 1.3 millones. Lo cual es un dato muy alarmante porque refleja la realidad de nuestro país, donde el 55% de la población trabajadora gana menos de un salario y eso que este valor de 1.37 millones representa el ingreso para el hogar, lo cual es aún más preocupante. La distribución de estos valores tiene cola pesada a la derecha, con un sesgo a izquierda que representan los ingresos más bajos por hogar. Es evidente que muy pocos hogares tienen ingresos superiores a los 5 millones. 
 
 
 **3.** Realice un gráfico nube de puntos de los ingresos mensuales por hogar versus el número de individuos por hogar. ¿Qué observa?
 
+Es importante hacer la claridad de que el gráfico de dispersión es de una variable discreta y una continua, no va generar una nube de punto, precisamente por la naturaleza de la variable "número de individuos". El gráfico se muestra a continuación. 
 
 ```{r}
-Datos_unidos <- inner_join(Conteo_familia, datos_sin_outliers, by = "DIRECTORIO")
+Datos_unidos <- inner_join(Conteo_Hogar, Ingreso_mensual, by = "DIRECTORIO")
 
 ggplot(Datos_unidos, aes(x = Num_Individuos, y = Ingreso_hogar)) +
   geom_point(color = "darkblue", size = 2) +
-  # línea de tendencia 
-  geom_smooth(method = "lm", se = FALSE, color = "red", linetype = "dashed") +
-  
- 
   labs(
     title = "Relación entre Ingreso del Hogar y Número de Individuos",
     x = "Número de Individuos por Hogar",
     y = "Ingreso Mensual Total por Hogar"
   )
 
+```
 
+
+**Conclusiones**
+
+En el gráfico anterior se reflejan aspectos similares observados en el gráfico de barras anterior. Pero es complicado dar descripciones porque estas son muy subjetivas y es difícil hacer comentarios. Es notable que aquellos hogares con un mayor número de individuos, posean ingresos entre 2.5 y 3.5 millones (obsérvese los puntos más alejado a la derecha). Es preocupante que hogares tan numerosos (entre 9 y 15 personas), reciban ingresos inferiores a los 2.5 millones, note que al dividir 2.5 millones entre 9, a cada miembro del hogar le corresponden 0.27 millones mensuales, lo cual es muy poco dinero para cada miembro. Igualmente tener cerca de 3.5 millones para 24 miembros del hogar, es una cifra muy alarmante. 
+
+
+**4.** Realice un mapa de Colombia considerando los ingresos mensuales promedio por hogar para los departamentos con colores por 4 categorías (definidas por usted) e incluyendo la respectiva leyenda.
+
+La función gadm del paquete geodata, posee un mapa de Colombia segmentado por departamento. Se hace uso de este para gráficar. 
+
+```{r}
+Colombia <- gadm(country = "COL", level = 1, path = tempdir()) %>%  st_as_sf()
+```
+
+Se realiza el cálculo del ingreso promedio por departamento, se realiza un inner_join, para su respectivo cálculo. Además se limpian datos missing
+y filas repetidas, producto del inner_join. 
+
+```{r}
+Ingreso_mensual <- inner_join(x = Ingreso_mensual, y = ComposicionHogar[, c("DIRECTORIO", "P756S1", "SECUENCIA_P")],
+                  by= join_by(DIRECTORIO, SECUENCIA_P)) %>% remove_missing() %>% distinct()
+
+IngresoDepartamento <- Ingreso_mensual %>% 
+  group_by(P756S1) %>% 
+  summarise(Promedio_Dep = mean(Ingreso_hogar)) %>% 
+  ungroup()
+```
+
+Para colorear el mapa, se toma como criterio de división los cuantiles del ingreso promedio por departamento. 
+
+```{r}
+cuantiles <- quantile(IngresoDepartamento$Promedio_Dep, c(0,  0.25, 0.5, .75, 1))
+
+cuantiles[1] <- cuantiles[1]-0.01
+
+IngresoDepartamento$Color <- cut(IngresoDepartamento$Promedio_Dep, 
+                                 breaks =cuantiles,
+                                 labels = c("#A50021", "#FFAD72", "#72D9FF", "#290AD8"))
+```
+
+```{r}
+# Crear vectores para el Código y el Nombre
+Codigo_DANE <- c(
+    "05", "08", "11", "13", "15", "17", "18", "19", "20", "23", "25", "27",
+    "41", "44", "47", "50", "52", "54", "63", "66", "68", "70", "73", "76",
+    "81", "85", "86", "88", "91", "94", "95", "97", "99"
+)
+Nombre_Departamento <- c(
+    "ANTIOQUIA", "ATLÁNTICO", "BOGOTÁ, D.C.", "BOLÍVAR", "BOYACÁ", "CALDAS", 
+    "CAQUETÁ", "CAUCA", "CÉSAR", "CÓRDOBA", "CUNDINAMARCA", "CHOCÓ", 
+    "HUILA", "LA GUAJIRA", "MAGDALENA", "META", "NARIÑO", "NORTE DE SANTANDER", 
+    "QUINDÍO", "RISARALDA", "SANTANDER", "SUCRE", "TOLIMA", "VALLE DEL CAUCA", 
+    "ARAUCA", "CASANARE", "PUTUMAYO", "SAN ANDRÉS, PROVIDENCIA Y SANTA CATALINA", 
+    "AMAZONAS", "GUAINÍA", "GUAVIARE", "VAUPÉS", "VICHADA"
+)
+
+# Crear el data frame
+deptos_colombia <- data.frame(
+    Codigo_DANE = Codigo_DANE,
+    Nombre_Departamento = str_to_title(Nombre_Departamento),
+    stringsAsFactors = FALSE
+)
+
+df1 <- leaf_join(IngresoDepartamento, deptos_colombia, by = c("P756S1" = "Codigo_DANE"))
+
+df1 <- leaf_join(Colombia, df1, by = c("NAME_1" = "Nombre_Departamento"))
 ```
 
 
 
 
-**4.** Realice un mapa de Colombia considerando los ingresos mensuales promedio por hogar para los departamentos con colores por 4 categorías (definidas por usted) e incluyendo la respectiva leyenda.
-
-# incompleto
-
 ```{r}
-
-# Crear el mapa del mundo con polígonos
-mapa_mundo <- maps::map("world", fill = TRUE, plot = FALSE)
-
-
-mapa_sf <- sf::st_as_sf(mapa_mundo)
-
-# Filtrar Colombia
-colombia <- mapa_sf[mapa_sf$ID == "Colombia", ]
-
-
-leaflet(colombia) %>%
+leaflet(df1) %>%
   addTiles() %>%
   addPolygons(
-    fillColor = "orange",
+    fillColor = ~Color,
     color = "black",
     weight = 1,
     fillOpacity = 0.5
@@ -233,8 +342,41 @@ leaflet(colombia) %>%
 
 
 
+
+
+
+
+
 **6.** Seleccione una de las demás bases de datos de la pestaña Microdatos (“Atención integral de los niños y niñas menores de 5 años”, “Condiciones de vida del hogar y tenencia de bienes (Beneficiarios F.E.A)”, “Condiciones de vida del hogar y tenencia de bienes (programas)”, etc.) que sea de su interés y plantee dos preguntas relacionadas con dicha base de datos, respondiendo con gráficos o tablas de resumen.
 
 
 
+
+
+
+
+
+
 **7.** Con base en las tres bases de datos anteriores, plantee 10 preguntas que sean de su interés y que implique “UNIR” las tres bases de datos.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
