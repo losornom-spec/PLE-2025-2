@@ -42,6 +42,28 @@ FuerzaTrabajo <- read.csv(
 ```
 
 ```{r}
+Servicios_Hogar <- read.csv(
+  file = unz(
+    r"(datos\Servicios_del_hogar.zip)",
+    "Servicios del hogar.CSV"
+    ),
+  sep = ";"
+  )
+
+```
+
+```{r}
+Salud <- read.csv(
+  file = unz(
+    r"(datos\Salud_ajustada.zip)",
+    "Salud.CSV"
+    ),
+  sep = ";"
+  )
+```
+
+
+```{r}
 # librerias usadas
 library(tidyverse)
 library(dplyr)
@@ -114,7 +136,6 @@ Con el histograma podemos notar una distribución asimétrica positiva ya que la
 
 **2.** En promedio, ¿cuáles son los ingresos mensuales por hogar? ¿Cuál es la desviación estándar? Realice un gráfico boxplot y un histograma de esta variable. Saque conclusiones.
 
-# Preguntar al profesor
 
 Para los ingresos mensuales se hará el cálculo de ingresos correspondientes a empleos, arriendos, subsidios, entre otros. Las variables que se hayan medido en escalas diferentes a meses (por ejemplo, trimestral, semestral, anual, etc), estas se llevarán a meses para que sean comparables. 
 
@@ -296,7 +317,7 @@ IngresoDepartamento$Color <- cut(IngresoDepartamento$Promedio_Dep,
 ```{r}
 # Crear vectores para el Código y el Nombre
 Codigo_DANE <- c(
-    "05", "08", "11", "13", "15", "17", "18", "19", "20", "23", "25", "27",
+    "5", "8", "11", "13", "15", "17", "18", "19", "20", "23", "25", "27",
     "41", "44", "47", "50", "52", "54", "63", "66", "68", "70", "73", "76",
     "81", "85", "86", "88", "91", "94", "95", "97", "99"
 )
@@ -321,6 +342,99 @@ df1 <- leaf_join(IngresoDepartamento, deptos_colombia, by = c("P756S1" = "Codigo
 df1 <- leaf_join(Colombia, df1, by = c("NAME_1" = "Nombre_Departamento"))
 ```
 
+
+
+############# Codigo opcional para el mapa, con el archivo shp,  revisar porque no está saliendo antioquia ########## 
+
+```{r}
+
+mapa_colombia <- st_read(r"(~/EDAED/Trabajos_IAM/PLE/PLE-2025-2/Trabajo2/datos/Departament_Maps_2024)")
+
+mapa_colombia <- mapa_colombia %>%
+  rename(
+    Codigo_DANE = dpto_ccdgo # Renombra la columna real 'dpto_ccdgo' al nombre esperado 'Codigo_DANE'
+  )
+
+# Renombrar la columna P756S1 a Codigo_DANE en la tabla de ingresos
+IngresoDepartamento <- IngresoDepartamento %>%
+  mutate(
+    Codigo_DANE = as.character(Codigo_DANE)
+  )
+# Crear el data.frame base de departamentos
+datos_base_departamentos <- data.frame(
+  Codigo_DANE = Codigo_DANE,
+  Nombre_Departamento = Nombre_Departamento
+)
+
+
+IngresoDepartamento_Completo <- IngresoDepartamento %>%
+  left_join(datos_base_departamentos, by = "Codigo_DANE")
+
+# --- Paso 1: Calcular Cuantiles y Categoría (Simplificado) ---
+cuantiles <- quantile(IngresoDepartamento_Completo$Promedio_Dep, 
+                      probs = c(0.25, 0.50, 0.75), 
+                      na.rm = TRUE)
+
+datos_con_color <- IngresoDepartamento_Completo %>%
+  mutate(
+    # Crear la variable Categórica (Factor)
+    Categoria_Cuantil = factor(
+      case_when(
+        Promedio_Dep <= cuantiles[1] ~ 1, # Cuartil 1
+        Promedio_Dep <= cuantiles[2] ~ 2, # Cuartil 2
+        Promedio_Dep <= cuantiles[3] ~ 3, # Cuartil 3
+        TRUE ~ 4                            # Cuartil 4
+      ),
+      levels = 1:4 # Asegura que los niveles estén ordenados
+    )
+  )
+
+# Definición de la paleta y etiquetas en un vector/data.frame de mapeo
+colores_y_etiquetas <- c(
+  "1" = "#A50021",
+  "2" = "#FFAD72",
+  "3" = "#72D9FF",
+  "4" = "#290AD8"
+)
+
+nombres_leyenda <- c(
+  "1" = "Q1 (Menor a 25%)",
+  "2" = "Q2 (25% - 50%)",
+  "3" = "Q3 (50% - 75%)",
+  "4" = "Q4 (Mayor a 75%)"
+)
+
+# 5. Unir los datos de ingresos con los datos del mapa (usando la variable 'Codigo_DANE')
+ mapa_final <- mapa_colombia %>%
+   left_join(datos_con_color, by = "Codigo_DANE")
+
+
+# 6. Generar el Mapa
+grafico_mapa <- ggplot(data = mapa_final) + # Asume que 'mapa_final' ya está unido
+  geom_sf(aes(fill = Categoria_Cuantil), color = "gray20", linewidth = 0.3) +
+  
+  # Usar los vectores de mapeo para reducir la definición de la escala
+  scale_fill_manual(
+    values = colores_y_etiquetas, # Usa el vector de colores
+    labels = nombres_leyenda,     # Usa el vector de etiquetas
+    name = "Ingreso Promedio Mensual"
+  ) +
+  
+  labs(
+    title = "Ingreso Promedio por Departamento en Colombia por Cuantiles"
+  ) +
+  theme_minimal() +
+  # Reducción de líneas del theme para simplificar el código visual
+  theme(
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+print(grafico_mapa)
+```
 
 
 
@@ -350,6 +464,11 @@ leaflet(df1) %>%
 **6.** Seleccione una de las demás bases de datos de la pestaña Microdatos (“Atención integral de los niños y niñas menores de 5 años”, “Condiciones de vida del hogar y tenencia de bienes (Beneficiarios F.E.A)”, “Condiciones de vida del hogar y tenencia de bienes (programas)”, etc.) que sea de su interés y plantee dos preguntas relacionadas con dicha base de datos, respondiendo con gráficos o tablas de resumen.
 
 
+Preguntas del punto 6:
+
+**a.** ¿Qué asociación existe entre el gasto de agua y gasto de energía en los hogares?
+
+**b.** Haga un gráfico con la variable ingreso per cápita por departamento y  según el nivel de la misma ( Alto, medio, bajo)
 
 
 
@@ -361,8 +480,44 @@ leaflet(df1) %>%
 
 
 
+Preguntas punto 7:
+
+**a.** ¿Los hogares que tienen mayores ingresos tienden a pagar más por el servicio de salud?
 
 
+
+**b.** ¿Cuál es el ingreso promedio de los hogares que pagan medicina prepagada?
+
+
+
+**c.** Existe alguna relación entre el estado de salud y el ingreso mensual 
+
+
+
+**d.** Que tanto se preocupan las familias por su salud según su nivel de ingresos. Para ellos tome en cuenta el número de consultas realizadas durante el año ( odontología, psicología, etc.)
+
+
+
+**f.** Con la base de datos "servicios del hogar" analice la correspondencia entre el número de integrantes del hogar con el número de cuartos. (Hacer una tabla de contingencia)
+
+
+
+**g.** Compare los gastos en servicios ( acueducto, energía , gas , internet , telefonía) con los ingresos del hogar
+
+
+
+**h.** ¿De acuerdo al ingreso mensual como son las prácticas de reutilización del agua?
+
+
+
+**i.** Anteriormente se calculó el ingreso mensual por Hogar.  Compare y observe las diferencias con el valor dado en la base de datos sobre salud
+
+
+
+**j.** ¿Cual es la satisfacción de los hogares con su ingreso comparando con el ingreso mensual que devengan?
+
+
+**K** ¿En correpondencia con el número de integrantes del hogar considera que el agua disponible es suficiente (P3166 de la base de datos : "Servicios del hogar")?
 
 
 
