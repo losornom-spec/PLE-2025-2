@@ -54,12 +54,9 @@ Servicios_Hogar <- read.csv(
 
 ```{r}
 Salud <- read.csv(
-  file = unz(
-    r"(datos\Salud_ajustada.zip)",
-    "Salud.CSV"
-    ),
+  file = r"(datos\Salud.CSV)", 
   sep = ";"
-  )
+)
 ```
 
 
@@ -74,6 +71,7 @@ library(sf)
 library(leaflet)
 library(magrittr)
 library(geodata)
+library(GGally)
 ```
 
 
@@ -103,7 +101,7 @@ EstadisticosHogar
 
 
 ```{r}
-p0 <- ggplot(Conteo_Hogar, aes(x = "", y = Num_Individuos)) +
+ggplot(Conteo_Hogar, aes(x = "", y = Num_Individuos)) +
   geom_boxplot(fill = "#66CDAA", color = "darkblue") +
   geom_point(data = data.frame(y = EstadisticosHogar$Promedio), aes(x = "", y = y), color = "red", size = 3) +
   labs(
@@ -111,19 +109,16 @@ p0 <- ggplot(Conteo_Hogar, aes(x = "", y = Num_Individuos)) +
     y = "Número de Individuos",
     x = ""
   )
-
-ggplotly(p0)
 ```
 
 ```{r}
-p1 <- ggplot(Conteo_Hogar, aes(x = Num_Individuos)) +
+ggplot(Conteo_Hogar, aes(x = Num_Individuos)) +
   geom_histogram(binwidth = 1, fill = "seagreen", color = "black") +
   labs(
     title = "Histograma del Número de Individuos por Hogar",
     x = "Número de Individuos",
     y = "Frecuencia (Número de Hogares)"
-  ) 
-ggplotly(p1)
+  )
 ```
 
 
@@ -227,7 +222,7 @@ EstadísticosHogar
 
 
 ```{r}
-p2<- ggplot(Ingreso_mensual, aes(x = "", y = Ingreso_hogar)) +
+ggplot(Ingreso_mensual, aes(x = "", y = Ingreso_hogar)) +
   geom_boxplot(fill = "#66CDAA", color = "darkblue") +
   geom_point(data = data.frame(y = EstadísticosHogar$Promedio), aes(x = "", y = y), color = "red", size = 3) +
   labs(
@@ -235,19 +230,16 @@ p2<- ggplot(Ingreso_mensual, aes(x = "", y = Ingreso_hogar)) +
     y = "Ingresos mensuales",
     x = ""
   )
-ggplotly(p2)
 ```
 
 ```{r}
-p3 <- ggplot(Ingreso_mensual, aes(x = Ingreso_hogar)) +
+ggplot(Ingreso_mensual, aes(x = Ingreso_hogar)) +
   geom_histogram(fill = "seagreen", color = "black") +
   labs(
     title = "Histograma de los ingresos mensuales por hogar",
     x = "Ingresos mensuales",
     y = "Frecuencia (Número de Hogares)"
-  ) 
-
-ggplotly(p3)
+  )
 ```
 
 
@@ -286,17 +278,20 @@ En el gráfico anterior se reflejan aspectos similares observados en el gráfico
 La función gadm del paquete geodata, posee un mapa de Colombia segmentado por departamento. Se hace uso de este para gráficar. 
 
 ```{r}
+# Se carga el mapa de Colombia por departamentos, tarda unos segundos (length 5465174 bytes (5.2 MB))
+
 Colombia <- gadm(country = "COL", level = 1, path = tempdir()) %>%  st_as_sf()
 ```
 
-Se realiza el cálculo del ingreso promedio por departamento, se realiza un inner_join, para su respectivo cálculo. Además se limpian datos missing
-y filas repetidas, producto del inner_join. 
+Se realiza el cálculo del ingreso promedio por departamento, se realiza un inner_join, para su respectivo cálculo. Además se limpian datos missing y filas repetidas, producto del inner_join. 
 
 ```{r}
-Ingreso_mensual <- inner_join(x = Ingreso_mensual, y = ComposicionHogar[, c("DIRECTORIO", "P756S1", "SECUENCIA_P")],
+Ingreso_mensual <- inner_join(x = Ingreso_mensual, y = ComposicionHogar[, c("DIRECTORIO", "P756S1", "SECUENCIA_P", "P756S2")],
                   by= join_by(DIRECTORIO, SECUENCIA_P)) %>% remove_missing() %>% distinct()
 
-IngresoDepartamento <- Ingreso_mensual %>% 
+Ingreso_mensual$P756S1 <- as.factor(Ingreso_mensual$P756S1)
+
+IngresoDepartamento <- Ingreso_mensual %>%
   group_by(P756S1) %>% 
   summarise(Promedio_Dep = mean(Ingreso_hogar)) %>% 
   ungroup()
@@ -312,9 +307,7 @@ cuantiles[1] <- cuantiles[1]-0.01
 IngresoDepartamento$Color <- cut(IngresoDepartamento$Promedio_Dep, 
                                  breaks =cuantiles,
                                  labels = c("#A50021", "#FFAD72", "#72D9FF", "#290AD8"))
-```
 
-```{r}
 # Crear vectores para el Código y el Nombre
 Codigo_DANE <- c(
     "5", "8", "11", "13", "15", "17", "18", "19", "20", "23", "25", "27",
@@ -337,164 +330,377 @@ deptos_colombia <- data.frame(
     stringsAsFactors = FALSE
 )
 
-df1 <- leaf_join(IngresoDepartamento, deptos_colombia, by = c("P756S1" = "Codigo_DANE"))
+IngresoDepartamento <- full_join(IngresoDepartamento, deptos_colombia, by = c("P756S1" = "Codigo_DANE"))
 
-df1 <- leaf_join(Colombia, df1, by = c("NAME_1" = "Nombre_Departamento"))
+IngresoDepartamento$Nombre_Departamento <- recode(IngresoDepartamento$Nombre_Departamento,
+                                    "Bogotá, D.c." = "Bogotá D.C.",
+                                    "César" = "Cesar",
+                                    "Norte De Santander"="Norte de Santander",
+                                    "Valle Del Cauca"="Valle del Cauca",
+                                    "San Andrés, Providencia Y Santa Catalina" = "San Andrés y Providencia")
+
+IngresoDepartamento <- full_join(Colombia, IngresoDepartamento, by = c("NAME_1" = "Nombre_Departamento"))
+
+# Crear etiquetas para la leyenda
 ```
 
-
-
-############# Codigo opcional para el mapa, con el archivo shp,  revisar porque no está saliendo antioquia ########## 
-
 ```{r}
-
-mapa_colombia <- st_read(r"(~/EDAED/Trabajos_IAM/PLE/PLE-2025-2/Trabajo2/datos/Departament_Maps_2024)")
-
-mapa_colombia <- mapa_colombia %>%
-  rename(
-    Codigo_DANE = dpto_ccdgo # Renombra la columna real 'dpto_ccdgo' al nombre esperado 'Codigo_DANE'
-  )
-
-# Renombrar la columna P756S1 a Codigo_DANE en la tabla de ingresos
-IngresoDepartamento <- IngresoDepartamento %>%
-  mutate(
-    Codigo_DANE = as.character(Codigo_DANE)
-  )
-# Crear el data.frame base de departamentos
-datos_base_departamentos <- data.frame(
-  Codigo_DANE = Codigo_DANE,
-  Nombre_Departamento = Nombre_Departamento
-)
-
-
-IngresoDepartamento_Completo <- IngresoDepartamento %>%
-  left_join(datos_base_departamentos, by = "Codigo_DANE")
-
-# --- Paso 1: Calcular Cuantiles y Categoría (Simplificado) ---
-cuantiles <- quantile(IngresoDepartamento_Completo$Promedio_Dep, 
-                      probs = c(0.25, 0.50, 0.75), 
-                      na.rm = TRUE)
-
-datos_con_color <- IngresoDepartamento_Completo %>%
-  mutate(
-    # Crear la variable Categórica (Factor)
-    Categoria_Cuantil = factor(
-      case_when(
-        Promedio_Dep <= cuantiles[1] ~ 1, # Cuartil 1
-        Promedio_Dep <= cuantiles[2] ~ 2, # Cuartil 2
-        Promedio_Dep <= cuantiles[3] ~ 3, # Cuartil 3
-        TRUE ~ 4                            # Cuartil 4
-      ),
-      levels = 1:4 # Asegura que los niveles estén ordenados
-    )
-  )
-
-# Definición de la paleta y etiquetas en un vector/data.frame de mapeo
-colores_y_etiquetas <- c(
-  "1" = "#A50021",
-  "2" = "#FFAD72",
-  "3" = "#72D9FF",
-  "4" = "#290AD8"
-)
-
-nombres_leyenda <- c(
-  "1" = "Q1 (Menor a 25%)",
-  "2" = "Q2 (25% - 50%)",
-  "3" = "Q3 (50% - 75%)",
-  "4" = "Q4 (Mayor a 75%)"
-)
-
-# 5. Unir los datos de ingresos con los datos del mapa (usando la variable 'Codigo_DANE')
- mapa_final <- mapa_colombia %>%
-   left_join(datos_con_color, by = "Codigo_DANE")
-
-
-# 6. Generar el Mapa
-grafico_mapa <- ggplot(data = mapa_final) + # Asume que 'mapa_final' ya está unido
-  geom_sf(aes(fill = Categoria_Cuantil), color = "gray20", linewidth = 0.3) +
-  
-  # Usar los vectores de mapeo para reducir la definición de la escala
-  scale_fill_manual(
-    values = colores_y_etiquetas, # Usa el vector de colores
-    labels = nombres_leyenda,     # Usa el vector de etiquetas
-    name = "Ingreso Promedio Mensual"
-  ) +
-  
-  labs(
-    title = "Ingreso Promedio por Departamento en Colombia por Cuantiles"
-  ) +
-  theme_minimal() +
-  # Reducción de líneas del theme para simplificar el código visual
-  theme(
-    axis.title = element_blank(),
-    axis.text = element_blank(),
-    axis.ticks = element_blank(),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank()
-  )
-
-print(grafico_mapa)
-```
-
-
-
-```{r}
-leaflet(df1) %>%
-  addTiles() %>%
+IngresoDepartamento %>% 
+  leaflet() %>% 
+  addTiles() %>% 
   addPolygons(
     fillColor = ~Color,
     color = "black",
     weight = 1,
-    fillOpacity = 0.5
+    fillOpacity = 0.5,
+    popup = paste0("Ingreso Promedio Mensual por Hogar: COP ", round(IngresoDepartamento$Promedio_Dep,2))
+  ) %>%
+  addLegend(
+    position = "bottomright",
+    colors = c("#A50021", "#FFAD72", "#72D9FF", "#290AD8"),
+    labels = c("Q1 (Menor a 25%)", "Q2 (25% - 50%)", "Q3 (50% - 75%)", "Q4 (Mayor a 75%)"),
+    title = "Ingreso Promedio Mensual por Hogar (COP)"
   )
 ```
 
 
+**Conclusiones**:
+
+Basado en el mapa realizado se dan algunas observaciones:
+
+- Aquellos departamentos que poseen un menor ingreso promedio por hogar, son: Amazonas, Caquetá, Cauca, Putumayo, Gaugira, Arauca, Córdoba y Sucre. Principalmente se observa que los menores ingresos son en departamentos perifericos.
+
+- Departamentos que tiene salidas al Océano Pacífico, límites con Venezuela o Brasil, tienen un poco mejores a los departamentos anteriores, pero siguen siendo bajos en comparación con el resto del país.
+
+- Departamentos centrales reflejan ingresos promedio por hogar más altos, como Cundinamarca, Boyacá, Santander, Antioquia y Valle del Cauca.
+
 
 **5.** Para el departamento con mayores ingresos mensuales promedio por hogar, considere los ingresos mensuales promedio por municipio y realice un mapa con colores por 3 categorías (definidas por usted) e incluyendo la respectiva leyenda.
 
+Basado en los cálculos, el departamento con mayores ingresos es San Andres y Providencia. Este departamento solo cuenta con 3 municipios, entonces para realizar el ejercicio y que se pueda ilustrar de mejor manera, se elegirá el segundo departamento en el cual el ingreso promedio sea el más alto. Basado en los cálculos realizados, este departamento es Meta, si se ignora que Bogotá D.C. es un distrito capital y no un departamento propiamente dicho.
+
+
+```{r}
+# Se crea el mapa del Meta
+Municipios <- gadm(country = "COL", level = 2, path = "datos/") %>%
+  st_as_sf() %>% 
+  filter(NAME_1 == "Meta")
+```
 
 
 
+```{r}
+Ingresos_Hogar_Meta <- Ingreso_mensual %>% filter(P756S1 == "50") %>% 
+  group_by(DIRECTORIO, SECUENCIA_P) %>% 
+  summarise(Ingreso_hogar = sum(Ingreso_hogar, na.rm = TRUE),
+            .groups = "drop")
+
+Ingresos_Hogar_Meta <- inner_join(x= Ingresos_Hogar_Meta, y= Ingreso_mensual[, c("DIRECTORIO", "SECUENCIA_P", "P756S2", "P756S1")],
+                  by= join_by("DIRECTORIO", "SECUENCIA_P")) %>% distinct() %>% filter(P756S1 == "50")
+
+Ingresos_Hogar_Meta_Municipios <- Ingresos_Hogar_Meta %>% 
+  group_by(P756S2) %>% 
+  summarise(Prom_municipio = mean(Ingreso_hogar),
+            .groups = "drop")
+
+Ingresos_Hogar_Meta_Municipios$P756S2 <- as.character(Ingresos_Hogar_Meta_Municipios$P756S2)
+```
 
 
+```{r}
+cuantiles_Meta <- quantile(Ingresos_Hogar_Meta_Municipios$Prom_municipio, c(0,  0.25, 0.5, .75, 1))
 
+cuantiles_Meta[1] <- cuantiles_Meta[1]-0.01
+
+Ingresos_Hogar_Meta_Municipios$Color <- cut(Ingresos_Hogar_Meta_Municipios$Prom_municipio, 
+                                 breaks =cuantiles_Meta,
+                                 labels = c("#A50021", "#FFAD72", "#72D9FF", "#290AD8"))
+
+url_meta <- "https://co.wikimedia.org/wiki/Municipios/Meta"
+
+codigo_municipio_META <-  url_meta %>% read_html() %>% html_table() %>% .[[1]]
+codigo_municipio_META$Municipio <- str_to_title(codigo_municipio_META$Municipio)
+codigo_municipio_META$Código <- as.character(codigo_municipio_META$Código)
+codigo_municipio_META$Municipio <- recode(codigo_municipio_META$Municipio,
+                                          "Acacias"="Acacías",
+                                          "Barranca De Upia"="Barranca de Upía",
+                                          "Castilla La Nueva"="Castilla la Nueva",
+                                          "Fuente De Oro" = "Fuente de Oro",
+                                           "Cubarral"="San Luis de Cubarral",
+                                          "Mapiripan"="Mapiripán",
+                                          "Lejanias"="Mapiripán",
+                                          "Puerto Gaitan"="Puerto Gaitán",
+                                          "Puerto Lopez"="Puerto López",
+                                          "San Carlos Guaroa"="San Carlos de Guaroa",
+                                          "San Juan De Arama"="San Juan de Arama",
+                                          "San Martin"="San Martín")
+
+Ingresos_Hogar_Meta_Municipios <- full_join(x=Ingresos_Hogar_Meta_Municipios, y=codigo_municipio_META,
+                                            by=join_by("P756S2"=="Código"))
+
+Ingresos_Hogar_Meta_Municipios <- full_join(x=Municipios, y=Ingresos_Hogar_Meta_Municipios,
+                                            by=c("NAME_2"="Municipio"))
+
+Ingresos_Hogar_Meta_Municipios[14, 14:16] <- Ingresos_Hogar_Meta_Municipios[16, 14:16]
+Ingresos_Hogar_Meta_Municipios <- Ingresos_Hogar_Meta_Municipios[-16, ]
+
+```
+
+```{r}
+Ingresos_Hogar_Meta_Municipios %>% 
+  leaflet() %>% 
+  addTiles() %>% 
+  addPolygons(
+    fillColor = ~Color,
+    color = "black",
+    weight = 1,
+    fillOpacity = 0.5,
+    popup = paste0("Ingreso Promedio Mensual por Hogar: COP ", round(Ingresos_Hogar_Meta_Municipios$Prom_municipio,2))
+  ) %>%
+  addLegend(
+    position = "bottomright",
+    colors = c("#A50021", "#FFAD72", "#72D9FF", "#290AD8"),
+    labels = c("Q1 (Menor a 25%)", "Q2 (25% - 50%)", "Q3 (50% - 75%)", "Q4 (Mayor a 75%)"),
+    title = "Ingreso Promedio Mensual por Hogar (COP)"
+  )
+```
+
+
+**Conclusiones**
+
+A continuación se dan algunos comentarios sobre el mapa:
+
+- Los municipio con mayores ingresos se encuentran en la parte centro-norte del departamento.
+
+- Es esperable que la capital del departamento (Villavicencio, se encuentre entre los cuantiles superiores),lo cual es esperable ya que las capitales suelen concentrar la actividad económica y los ingresos más altos. 
+
+- Los municipios con los ingresos promedio más bajos (el cuartil inferior) se observan predominantemente en las grandes áreas rurales y periféricas del departamento.
+
+- Estos cuartiles intermedios se encuentran generalmente entre las zonas de ingreso alto (Villavicencio) y las grandes áreas rurales de ingreso bajo.
 
 
 **6.** Seleccione una de las demás bases de datos de la pestaña Microdatos (“Atención integral de los niños y niñas menores de 5 años”, “Condiciones de vida del hogar y tenencia de bienes (Beneficiarios F.E.A)”, “Condiciones de vida del hogar y tenencia de bienes (programas)”, etc.) que sea de su interés y plantee dos preguntas relacionadas con dicha base de datos, respondiendo con gráficos o tablas de resumen.
 
+Para este item, se toma la base de datos de Servicios del hogar y a continuación se plantean dos preguntas:
 
-Preguntas del punto 6:
+**a.** ¿Qué asociación existe entre el consumo de "Electricidad", "Acueducto", "Gas", "Alcantarillado", "Recolección de Basuras" en los hogares?
 
-**a.** ¿Qué asociación existe entre el gasto de agua y gasto de energía en los hogares?
+```{r, warning=FALSE}
+ggpairs(
+  data = Servicios_Hogar,
+  columns = c("P5018", "P5067", "P3163", "P5034", "P5044"),
+  columnLabels = c("Electricidad", "Acueducto", "Gas", "Alcantarillado", "Basuras")
+)
+```
 
-**b.** Haga un gráfico con la variable ingreso per cápita por departamento y  según el nivel de la misma ( Alto, medio, bajo)
+**Conclusiones**
+
+- En la diagonal podemos observar la distribución de cada una de las variables analizada (costo de los servicios en cuestión). Allí vemos que la distribución del costo es muy asimetrica y sesgada a la izquierda, concentrada en valores muy pequeños. 
+
+- En general, se observa una tendencia ligeramente positiva en la mayoría de los gráficos. Esto significa que, a medida que el costo/consumo de un servicio aumenta, el del otro también tiende a aumentar.
+
+- Todos los valores de correlación son positivos, lo que confirma la tendencia observada en los diagramas de dispersión. Sin embargo, la mayoría de los coeficientes de correlación son débiles a moderados. 
+
+- Las correlaciones más fuerte se encuentran entre: Acueducto y Alcantarillado (0.504) (es altamente esperable), Electricidad y Acueducto (0.393) y Alcantarillado y Basuras (0.393)
+
+
+**b.** Calcule los costos totales de servicios analizados anteriormente para cada uno de los hogares, luego realice un mapa del costo promedio en servicios por departamento. Coloreando en tres tonos, (rojo, amarillo y verde). Rojo para los costos más altos y verde para los menores
+
+Nuevamente para elegir los puntos de corte, se tomará el promedio por departamento y se encontrarán tres cuantiles. 
+
+
+```{r}
+FuerzaTrabajo %<>% 
+  rowwise() %>% 
+  mutate(IngresoMensual=sum(P8624,P6595S1,P6605S1, P6623S1,P8626S1, P8628S1, P8630S1,
+                            P8631S1, P1087S1A1/12, P1087S2A1/12, P1087S3A1/12, P1087S4A1,
+                            P1087S5A1, P6750, P8636S1, P8640S1, P8642S1, P8644S1, P8646S1,
+                            P8648S1/12, P8650S1A1/12, P8652S1/12, P8654S1/12, na.rm = TRUE)) %>% 
+  ungroup()
+
+
+Gasto_Servicios <- Servicios_Hogar %>% 
+  rowwise() %>% 
+  mutate(CostoServicios = sum(P5018, P5067, P3163, P5034, P5044)) %>% 
+  ungroup() %>% 
+  select(DIRECTORIO, SECUENCIA_ENCUESTA, SECUENCIA_P, CostoServicios) %>% 
+  remove_missing()
+
+Gasto_Servicios <- inner_join(Gasto_Servicios, ComposicionHogar[, c("DIRECTORIO", "SECUENCIA_ENCUESTA", "SECUENCIA_P","P756S1", "P756S2")]) %>% remove_missing()
+```
+
+
+```{r}
+Gasto_Servicios_Departamento <- Gasto_Servicios %>% 
+  group_by(P756S1) %>% 
+  summarise(Prom_Servicio = mean(CostoServicios),
+            .groups = "drop")
+
+
+Gasto_Servicios_Departamento$P756S1 <- as.character(Gasto_Servicios_Departamento$P756S1)
+
+Gasto_Servicios_Departamento <- full_join(x= deptos_colombia, y = Gasto_Servicios_Departamento,
+                                          by = join_by("Codigo_DANE"=="P756S1"))
 
 
 
+Gasto_Servicios_Departamento$Nombre_Departamento <- recode(Gasto_Servicios_Departamento$Nombre_Departamento,
+                                    "Bogotá, D.c." = "Bogotá D.C.",
+                                    "César" = "Cesar",
+                                    "Norte De Santander"="Norte de Santander",
+                                    "Valle Del Cauca"="Valle del Cauca",
+                                    "San Andrés, Providencia Y Santa Catalina" = "San Andrés y Providencia")
+Gasto_Servicios_Departamento <- full_join(x=Colombia, y=Gasto_Servicios_Departamento,
+                 by=join_by("NAME_1"=="Nombre_Departamento"))
+
+
+cuantiles_Servicios_Departamento <- quantile(Gasto_Servicios_Departamento$Prom_Servicio, c(0,  0.33, 0.66, 1))
+
+cuantiles_Servicios_Departamento[1] <- cuantiles_Servicios_Departamento[1]-0.01
+
+Gasto_Servicios_Departamento$Color <- cut(Gasto_Servicios_Departamento$Prom_Servicio, 
+                                 breaks =cuantiles_Servicios_Departamento,
+                                 labels = c("#7FFF00", "#FFD700", "#FF3030"))
+
+```
 
 
 
+```{r}
+Gasto_Servicios_Departamento %>% 
+  leaflet() %>% 
+  addTiles() %>% 
+  addPolygons(
+    fillColor = ~Color,
+    color = "black",
+    weight = 1,
+    fillOpacity = 0.5,
+    popup = paste0("Costo promedio de servicios por departamento", round(Gasto_Servicios_Departamento$Prom_Servicio,2))) %>%
+  addLegend(
+    position = "bottomright",
+    colors = c("#7FFF00", "#FFD700", "#FF3030"),
+    labels = c("Menor a 33.3%", "33.3% - 66.6%", "Mayor a 66.6%"),
+    title = "Costo promedio de servicios por departamento (COP)"
+  )
+```
+
+**Conclusiones**
+
+A continuación se dan algunas observaciones por región del país:
+
+
+- Los departamentos en la costa Caribe (como La Guajira, Magdalena, Atlántico, Bolívar, Sucre) y algunos de la Región Andina del norte (como Cesar y Norte de Santander) presentan el mayor costo promedio de servicios (rojo). Esto sugiere que los hogares en estas zonas tienen el consumo o las tarifas más altas del país.
+
+- Departamentos con alta densidad de población y actividad económica, como Antioquia, el Eje Cafetero (Caldas, Risaralda, Quindío), y otros en el centro (como Valle del Cauca, Cauca, Huila, Tolima, Cundinamarca/Bogotá - aunque este último no tiene el contorno claro, se infiere su color por la posición) caen principalmente en el rango intermedio (amarillo).
+
+
+- La gran mayoría de los departamentos de la Orinoquía (Meta, Vichada, Casanare, Arauca) y la Amazonía (Caquetá, Guaviare, Putumayo, Amazonas, Vaupés, Guainía) están en el rango de menor gasto promedio (verde). Esto podría deberse a una combinación de factores como menor densidad poblacional, menor desarrollo de infraestructura de servicios en algunas áreas, o diferencias en el tipo de servicios disponibles y sus tarifas.
+
+- Es de resaltar que los departamentos de la región Caribe y Pacífica, durante años han luchado contra las altas tasas o costos de la electricidad. 
 
 **7.** Con base en las tres bases de datos anteriores, plantee 10 preguntas que sean de su interés y que implique “UNIR” las tres bases de datos.
 
 
-
-Preguntas punto 7:
-
 **a.** ¿Los hogares que tienen mayores ingresos tienden a pagar más por el servicio de salud?
 
+
+```{r}
+BD7a <- full_join(x=Ingreso_mensual, y = Salud[, c("DIRECTORIO", "SECUENCIA_ENCUESTA", "SECUENCIA_P", "P8551")]) %>% 
+  remove_missing() %>% filter(P8551 != 99) %>% distinct()
+```
+
+```{r}
+BD7a %>% ggplot(aes(x=Ingreso_hogar, y=P8551)) +
+  geom_point()
+```
+
+
+
+```{r}
+correlacion_r <- cor(BD7a$Ingreso_hogar, BD7a$P8551, use = "complete.obs")
+titulo_correlacion <- sprintf("Correlación: r = %.3f", correlacion_r)
+
+BD7a %>%
+  ggplot(aes(x = Ingreso_hogar, y = P8551)) +
+  geom_point(aes(color = P8551),alpha = 0.6) +
+  scale_color_viridis_c(option = "plasma",
+                        name = "Gasto en Salud ($)") +
+  labs(title = paste("Relación entre Ingreso del Hogar y Gasto en Salud", "\n", titulo_correlacion),
+       x = "Ingreso del Hogar ($)",
+       y = "Gasto en Salud ($)") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    legend.title = element_text(size = 10)
+  )
+```
+
+**Conclusiones**
+
+El gráfico y el coeficiente $r = 0.209$ confirman que existe una relación lineal positiva, pero es muy débil. El principal factor que impulsa la variación en el gasto en salud no es el ingreso del hogar, sino probablemente otros factores no incluidos en este gráfico, como la necesidad médica, la edad, la ocurrencia de una enfermedad catastrófica o crónica, o el tipo de plan de salud que posean. La necesidad de gastar en salud parece ser independiente de la capacidad económica para la mayoría de la población.
 
 
 **b.** ¿Cuál es el ingreso promedio de los hogares que pagan medicina prepagada?
 
+Para responder a esta pregunta considere la siguiente información:
+
+- 1: Si
+
+- 2: No
+
+```{r}
+BD7b <- Ingreso_mensual %>% 
+  group_by(DIRECTORIO, SECUENCIA_P) %>% 
+  summarise(Prom_Hogar = mean(Ingreso_hogar))
+
+BD7b <- inner_join(x=BD7b,y=Salud[,c("DIRECTORIO", "SECUENCIA_ENCUESTA", "SECUENCIA_P", "P799S2")]) %>% 
+  remove_missing() %>% distinct() %>% 
+  group_by(P799S2) %>% 
+  summarise(Media = mean(Prom_Hogar)) %>% 
+  `rownames<-`(c("SI", "NO"))
+```
+
+**Conclusiones**
+
+En la tabla podemos observar que el ingreso promedio de las personas que tienen medicina prepagada es de 4.49 millones, mientras que las que no la tienen su ingreso es de 1.76 millones. Esto refleja una profunda desigualdad en el acceso a la calidad y oportunidad de los servicios de salud, ya que los hogares de mayores ingresos pueden complementar el sistema de salud básico (EPS) con servicios privados. 
 
 
 **c.** Existe alguna relación entre el estado de salud y el ingreso mensual 
 
+Para responder a esta pregunta considere la siguiente información:
+
+- 1: Muy bueno
+
+- 2: Bueno
+
+- 3: Regular
+
+- 4: Malo
+
+```{r}
+BD7c <- Ingreso_mensual %>% 
+  group_by(DIRECTORIO, SECUENCIA_P) %>% 
+  summarise(Prom_Hogar = mean(Ingreso_hogar))
+
+BD7c <- inner_join(x=BD7c, y=Salud[,c("DIRECTORIO", "SECUENCIA_ENCUESTA", "SECUENCIA_P", "P6127")]) %>% 
+  group_by(P6127) %>% 
+  summarise(Promedio = mean(Prom_Hogar)) %>% 
+  ungroup()
+  
+BD7c
+```
 
 
-**d.** Que tanto se preocupan las familias por su salud según su nivel de ingresos. Para ellos tome en cuenta el número de consultas realizadas durante el año ( odontología, psicología, etc.)
+**Conclusiones**
+
+Sí, existe una relación entre el estado de salud percibido y el ingreso promedio del hogar.Esto significa que: A Mejor Estado de Salud $\rightarrow$ Mayor Ingreso: Los hogares donde se percibe un estado de salud como "Muy Bueno" tienen el ingreso promedio más alto ($2,002,683 COP$).A Peor Estado de Salud $\rightarrow$ Menor Ingreso: Los hogares donde se percibe un estado de salud como "Malo" tienen el ingreso promedio más bajo ($1,315,673 COP$).
+
+El Ingreso Influye en la Salud: Un mayor ingreso permite a los hogares acceder a mejores condiciones de vida (vivienda, nutrición, ocio), entornos más seguros y, como vimos en tu dato anterior, a servicios de salud privados (medicina prepagada), lo que se traduce en un mejor estado de salud percibido.
+
+
+**d.** Que tanto se preocupan las familias por su salud según su nivel de ingresos. Para ellos tome en cuenta el número de consultas realizadas durante el año (odontología, psicología, etc.)
 
 
 
@@ -502,7 +708,7 @@ Preguntas punto 7:
 
 
 
-**g.** Compare los gastos en servicios ( acueducto, energía , gas , internet , telefonía) con los ingresos del hogar
+**g.** Compare los gastos en servicios (acueducto, energía, gas, internet, telefonía) con los ingresos del hogar
 
 
 
@@ -517,7 +723,7 @@ Preguntas punto 7:
 **j.** ¿Cual es la satisfacción de los hogares con su ingreso comparando con el ingreso mensual que devengan?
 
 
-**K** ¿En correpondencia con el número de integrantes del hogar considera que el agua disponible es suficiente (P3166 de la base de datos : "Servicios del hogar")?
+**K** ¿En correspondencia con el número de integrantes del hogar considera que el agua disponible es suficiente (P3166 de la base de datos : "Servicios del hogar")?
 
 
 
