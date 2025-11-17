@@ -16,6 +16,11 @@ output: html_document
 
 # Yamid Urrego Galvis - 1000756146 - yurregog@unal.edu.co
 
+**Introducción**
+
+
+
+
 ```{r}
 rm(list = ls())
 ```
@@ -72,6 +77,7 @@ library(leaflet)
 library(magrittr)
 library(geodata)
 library(GGally)
+library(rvest)
 ```
 
 
@@ -280,7 +286,7 @@ La función gadm del paquete geodata, posee un mapa de Colombia segmentado por d
 ```{r}
 # Se carga el mapa de Colombia por departamentos, tarda unos segundos (length 5465174 bytes (5.2 MB))
 
-Colombia <- gadm(country = "COL", level = 1, path = tempdir()) %>%  st_as_sf()
+Colombia <- gadm(country = "COL", level = 1, path = "datos/") %>%  st_as_sf()
 ```
 
 Se realiza el cálculo del ingreso promedio por departamento, se realiza un inner_join, para su respectivo cálculo. Además se limpian datos missing y filas repetidas, producto del inner_join. 
@@ -322,7 +328,6 @@ Nombre_Departamento <- c(
     "ARAUCA", "CASANARE", "PUTUMAYO", "SAN ANDRÉS, PROVIDENCIA Y SANTA CATALINA", 
     "AMAZONAS", "GUAINÍA", "GUAVIARE", "VAUPÉS", "VICHADA"
 )
-
 # Crear el data frame
 deptos_colombia <- data.frame(
     Codigo_DANE = Codigo_DANE,
@@ -364,7 +369,7 @@ IngresoDepartamento %>%
 ```
 
 
-**Conclusiones**:
+**Conclusiones**
 
 Basado en el mapa realizado se dan algunas observaciones:
 
@@ -379,15 +384,12 @@ Basado en el mapa realizado se dan algunas observaciones:
 
 Basado en los cálculos, el departamento con mayores ingresos es San Andres y Providencia. Este departamento solo cuenta con 3 municipios, entonces para realizar el ejercicio y que se pueda ilustrar de mejor manera, se elegirá el segundo departamento en el cual el ingreso promedio sea el más alto. Basado en los cálculos realizados, este departamento es Meta, si se ignora que Bogotá D.C. es un distrito capital y no un departamento propiamente dicho.
 
-
 ```{r}
 # Se crea el mapa del Meta
 Municipios <- gadm(country = "COL", level = 2, path = "datos/") %>%
   st_as_sf() %>% 
   filter(NAME_1 == "Meta")
 ```
-
-
 
 ```{r}
 Ingresos_Hogar_Meta <- Ingreso_mensual %>% filter(P756S1 == "50") %>% 
@@ -405,7 +407,6 @@ Ingresos_Hogar_Meta_Municipios <- Ingresos_Hogar_Meta %>%
 
 Ingresos_Hogar_Meta_Municipios$P756S2 <- as.character(Ingresos_Hogar_Meta_Municipios$P756S2)
 ```
-
 
 ```{r}
 cuantiles_Meta <- quantile(Ingresos_Hogar_Meta_Municipios$Prom_municipio, c(0,  0.25, 0.5, .75, 1))
@@ -508,7 +509,6 @@ ggpairs(
 
 Nuevamente para elegir los puntos de corte, se tomará el promedio por departamento y se encontrarán tres cuantiles. 
 
-
 ```{r}
 FuerzaTrabajo %<>% 
   rowwise() %>% 
@@ -564,8 +564,6 @@ Gasto_Servicios_Departamento$Color <- cut(Gasto_Servicios_Departamento$Prom_Serv
 
 ```
 
-
-
 ```{r}
 Gasto_Servicios_Departamento %>% 
   leaflet() %>% 
@@ -588,11 +586,9 @@ Gasto_Servicios_Departamento %>%
 
 A continuación se dan algunas observaciones por región del país:
 
-
 - Los departamentos en la costa Caribe (como La Guajira, Magdalena, Atlántico, Bolívar, Sucre) y algunos de la Región Andina del norte (como Cesar y Norte de Santander) presentan el mayor costo promedio de servicios (rojo). Esto sugiere que los hogares en estas zonas tienen el consumo o las tarifas más altas del país.
 
 - Departamentos con alta densidad de población y actividad económica, como Antioquia, el Eje Cafetero (Caldas, Risaralda, Quindío), y otros en el centro (como Valle del Cauca, Cauca, Huila, Tolima, Cundinamarca/Bogotá - aunque este último no tiene el contorno claro, se infiere su color por la posición) caen principalmente en el rango intermedio (amarillo).
-
 
 - La gran mayoría de los departamentos de la Orinoquía (Meta, Vichada, Casanare, Arauca) y la Amazonía (Caquetá, Guaviare, Putumayo, Amazonas, Vaupés, Guainía) están en el rango de menor gasto promedio (verde). Esto podría deberse a una combinación de factores como menor densidad poblacional, menor desarrollo de infraestructura de servicios en algunas áreas, o diferencias en el tipo de servicios disponibles y sus tarifas.
 
@@ -608,13 +604,6 @@ A continuación se dan algunas observaciones por región del país:
 BD7a <- full_join(x=Ingreso_mensual, y = Salud[, c("DIRECTORIO", "SECUENCIA_ENCUESTA", "SECUENCIA_P", "P8551")]) %>% 
   remove_missing() %>% filter(P8551 != 99) %>% distinct()
 ```
-
-```{r}
-BD7a %>% ggplot(aes(x=Ingreso_hogar, y=P8551)) +
-  geom_point()
-```
-
-
 
 ```{r}
 correlacion_r <- cor(BD7a$Ingreso_hogar, BD7a$P8551, use = "complete.obs")
@@ -662,12 +651,17 @@ BD7b <- inner_join(x=BD7b,y=Salud[,c("DIRECTORIO", "SECUENCIA_ENCUESTA", "SECUEN
   `rownames<-`(c("SI", "NO"))
 ```
 
+```{r}
+BD7b
+```
+
+
 **Conclusiones**
 
 En la tabla podemos observar que el ingreso promedio de las personas que tienen medicina prepagada es de 4.49 millones, mientras que las que no la tienen su ingreso es de 1.76 millones. Esto refleja una profunda desigualdad en el acceso a la calidad y oportunidad de los servicios de salud, ya que los hogares de mayores ingresos pueden complementar el sistema de salud básico (EPS) con servicios privados. 
 
 
-**c.** Existe alguna relación entre el estado de salud y el ingreso mensual 
+**c.** Existe alguna relación entre el estado de salud y el ingreso mensual por hogar. 
 
 Para responder a esta pregunta considere la siguiente información:
 
@@ -682,29 +676,90 @@ Para responder a esta pregunta considere la siguiente información:
 ```{r}
 BD7c <- Ingreso_mensual %>% 
   group_by(DIRECTORIO, SECUENCIA_P) %>% 
-  summarise(Prom_Hogar = mean(Ingreso_hogar))
+  summarise(Ingreso_hogar = sum(Ingreso_hogar))
 
-BD7c <- inner_join(x=BD7c, y=Salud[,c("DIRECTORIO", "SECUENCIA_ENCUESTA", "SECUENCIA_P", "P6127")]) %>% 
+BD7c <- inner_join(x=BD7c, y=Salud[,c("DIRECTORIO", "SECUENCIA_ENCUESTA", "SECUENCIA_P", "P6127")])
+
+EstadisticosBD7D <- BD7c%>% 
   group_by(P6127) %>% 
-  summarise(Promedio = mean(Prom_Hogar)) %>% 
+  summarise(Promedio = mean(Ingreso_hogar)) %>% 
   ungroup()
-  
-BD7c
+```
+
+```{r}
+BD7c %>% ggplot(aes(x=as.factor(P6127), y=Ingreso_hogar)) +
+  geom_jitter(width = 0.2, alpha = 0.5, color = "gray50")+
+  geom_boxplot(aes(fill = as.factor(P6127)), 
+               alpha = 0.7, 
+               outlier.shape = NA)+
+  labs(title = "Distribución del Ingreso del Hogar según Calidad de la salud",
+       x = "Estado de salud",
+       y = "Ingreso del Hogar",
+       fill = "Puntuación")
+```
+
+
+```{r}
+EstadisticosBD7D
 ```
 
 
 **Conclusiones**
 
-Sí, existe una relación entre el estado de salud percibido y el ingreso promedio del hogar.Esto significa que: A Mejor Estado de Salud $\rightarrow$ Mayor Ingreso: Los hogares donde se percibe un estado de salud como "Muy Bueno" tienen el ingreso promedio más alto ($2,002,683 COP$).A Peor Estado de Salud $\rightarrow$ Menor Ingreso: Los hogares donde se percibe un estado de salud como "Malo" tienen el ingreso promedio más bajo ($1,315,673 COP$).
+Sí, existe una relación entre el estado de salud percibido y el ingreso del hogar. Esto significa que: A Mejor Estado de Salud $\rightarrow$ Mayor Ingreso: Los hogares donde se percibe un estado de salud como "Muy Bueno" tienen el ingreso promedio más alto ($3.148.712	 COP$). A Peor Estado de Salud $\rightarrow$ Menor Ingreso: Los hogares donde se percibe un estado de salud como "Malo" tienen el ingreso más bajo ($2.187.159 COP$).
 
 El Ingreso Influye en la Salud: Un mayor ingreso permite a los hogares acceder a mejores condiciones de vida (vivienda, nutrición, ocio), entornos más seguros y, como vimos en tu dato anterior, a servicios de salud privados (medicina prepagada), lo que se traduce en un mejor estado de salud percibido.
 
-
 **d.** Que tanto se preocupan las familias por su salud según su nivel de ingresos. Para ellos tome en cuenta el número de consultas realizadas durante el año (odontología, psicología, etc.)
 
+Para responder a esta pregunta, se tomará como medida la cantidad de consultas realizadas por las personas en las diferentes maneras de prevenir una enfermedad:
+
+- Medicina general
+
+- Medicina especializada
+
+- Odontología
+
+- Medicina alternativa
+
+- Psicología
+
+En cada una de estas, si la persona asistió a una dependencia entonces se sumará una unidad a una nueva varible llamada Prevention, así el que no haya consultado ninguna tendrá el valor de 0 y el que las haya consultado a todas tendrá el valor de 5. Los demás valores serán entre 0 y 5. 
+
+```{r}
+Salud$Prevention <- rowSums(Salud[, c("P1699S1", "P1699S3", "P1699S2", "P1699S4", "P1699S5")] == 1)
+
+BD7d <- full_join(x=Ingreso_mensual, y = Salud[,c("DIRECTORIO", "SECUENCIA_ENCUESTA", "SECUENCIA_P", "Prevention")])
+```
+
+```{r}
+BD7d %>% ggplot(aes(x=as.factor(Prevention), y=Ingreso_hogar)) +
+  geom_jitter(width = 0.2, alpha = 0.5, color = "gray50")+
+  geom_boxplot(aes(fill = as.factor(Prevention)), 
+               alpha = 0.7, 
+               outlier.shape = NA)+
+  labs(title = "Distribución del Ingreso del Hogar según Puntuación de Prevención",
+       x = "Puntuación de Prevention",
+       y = "Ingreso del Hogar",
+       fill = "Puntuación")
+```
+
+**Conclusiones**
+
+A continuación se dan algunos comentarios al respecto:
+
+
+- Se observa una tendencia ligeramente creciente en la mediana del ingreso a medida que aumenta la Puntuación de Prevention, especialmente al pasar de 0 a 5. Esto sugiere que los hogares con mayores ingresos tienen una ligera tendencia a realizar más consultas (mayor Prevention), lo que se asocia con una mayor preocupación o capacidad para actuar en materia de salud preventiva.
+
+- La longitud de la caja es similar en todos los grupos, lo que indica que la variabilidad de los ingresos de la mitad central de las familias (entre el percentil 25 y 75) es relativamente constante independientemente de su nivel de Prevention.
+
+- El gráfico soporta la hipótesis de que el acceso a recursos económicos facilita las acciones de prevención, pero la conducta de prevención (realizar 0 a 5 consultas) sigue siendo ampliamente distribuida a través de todos los niveles de ingresos, mostrando una fuerte variabilidad interna en cada grupo.
 
 
 **f.** Con la base de datos "servicios del hogar" analice la correspondencia entre el número de integrantes del hogar con el número de cuartos. (Hacer una tabla de contingencia)
+
+
+
 
 
 
@@ -712,7 +767,16 @@ El Ingreso Influye en la Salud: Un mayor ingreso permite a los hogares acceder a
 
 
 
+
+
+
+
 **h.** ¿De acuerdo al ingreso mensual como son las prácticas de reutilización del agua?
+
+
+
+
+
 
 
 
@@ -720,10 +784,48 @@ El Ingreso Influye en la Salud: Un mayor ingreso permite a los hogares acceder a
 
 
 
+
+
+
+
 **j.** ¿Cual es la satisfacción de los hogares con su ingreso comparando con el ingreso mensual que devengan?
 
 
-**K** ¿En correspondencia con el número de integrantes del hogar considera que el agua disponible es suficiente (P3166 de la base de datos : "Servicios del hogar")?
+
+
+
+
+
+
+
+
+
+**k** ¿En correspondencia con el número de integrantes del hogar considera que el agua disponible es suficiente (P3166 de la base de datos : "Servicios del hogar")?
+
+
+
+
+
+
+
+
+
+
+
+**Conclsuiones finales del trabajo**
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
