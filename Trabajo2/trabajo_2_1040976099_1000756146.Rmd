@@ -11,47 +11,54 @@ date: "2025-10-17"
 output: html_document
 ---
 
-
 # Luis Gabriel Osorno Muñoz - 1040976099 - losornom@unal.edu.co
 
 # Yamid Urrego Galvis - 1000756146 - yurregog@unal.edu.co
 
 **Introducción**
 
+El presente trabajo se enfoca en el análisis profundo de la estructura y las condiciones socioeconómicas de los hogares colombianos, utilizando datos primarios de la Encuesta Nacional de Calidad de Vida (ECV) de 2023 proporcionada por el DANE. 
 
+Para este análisis se implementan distintas herramientas gráficas, tablas, mapas interactivos y varias medidas de tendencia para comprender el comportamiento en las distintas variables consideradas en las encuestas de los hogares.
+Se utilizan 4 bases de datos a partir de las cuales se plantean varias preguntas:
 
+- Características y composición del hogar.
 
-```{r}
+- Fuerza de trabajo.
+
+- Salud.
+
+- Servicios del hogar.
+
+Con las cuales se desea abordar áreas como: La estructura del hogar, capacidad económica, relaciones socio-económicas, diferencias entre departamentos, accesibilidad a la salud y los servicios fundamentales.
+Este estudio permite comprender y diagnosticar la realidad social del país, con lo cual se podrían diseñar políticas y programas para afrontar las distintas problemáticas de pobreza, infraestructura, servicios fundamentales entre otros.
+
+```{r setup}
 rm(list = ls())
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE
+)
 ```
-
 
 ```{r}
 ComposicionHogar <- read.csv(
-  file = unz(
-    r"(datos\Caracteristicas y composicion del hogar.zip)",
-    "Caracter\xa1sticas y composici\xa2n del hogar.CSV"
-    ),
+  file = r"(datos\Características y composición del hogar.CSV)",
   sep = ";"
   )
 ```
 
 ```{r}
 FuerzaTrabajo <- read.csv(
-  file = unz(
-    r"(datos\Fuerza de trabajo.zip)",
-    "Fuerza de trabajo.CSV"
-    ),
+  file = r"(datos\Fuerza de trabajo.CSV)",
   sep = ";"
   )
 ```
 
 ```{r}
 Servicios_Hogar <- read.csv(
-  file = unz(
-    r"(datos\Servicios_del_hogar.zip)",
-    "Servicios del hogar.CSV"
-    ),
+  file = r"(datos\Servicios del hogar.CSV)",
   sep = ";"
   )
 
@@ -78,6 +85,8 @@ library(magrittr)
 library(geodata)
 library(GGally)
 library(rvest)
+library(knitr)
+library(kableExtra)
 ```
 
 
@@ -101,9 +110,21 @@ EstadisticosHogar <- Conteo_Hogar %>%
     Desv_Estandar = sd(Num_Individuos),
     Mediana = median(Num_Individuos)
   )
-
-EstadisticosHogar
 ```
+
+```{r}
+EstadisticosHogar %>% kable(
+    format = "html",
+    digits = 2,
+    caption = "Estadístico del conteo de personas por hogar"
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = F,
+    position = "center"
+  )
+```
+
 
 
 ```{r}
@@ -208,7 +229,7 @@ Ingreso_mensual <- FuerzaTrabajo %>%
   ungroup()
 ```
 
-El cálculo anterior permite estimar los ingresos hogar, pero existen muchos datos atípicos que no permiten una buena visualización de los gráficos y alteran el cálculo de algunos estadísticos. Por ello, se decide eliminar todos aquellos ingresos por hogar que sean mayores a 10 millones. Esto no se hace basado en algún criterio, solo con el propósito de mejorar la visualización. 
+El cálculo anterior permite estimar los ingresos del hogar, pero existen muchos datos atípicos que no permiten una buena visualización de los gráficos y alteran el cálculo de algunos estadísticos. Por ello, se decide eliminar todos aquellos ingresos por hogar que sean mayores a 10 millones. Esto no se hace basado en algún criterio, solo con el propósito de mejorar la visualización. 
 
 ```{r}
 Ingreso_mensual %<>%
@@ -223,8 +244,22 @@ EstadísticosHogar <- Ingreso_mensual %>%
     Q3 = quantile(Ingreso_hogar, 0.75),
     Q_0.9 = quantile(Ingreso_hogar, 0.9)
   )
-EstadísticosHogar
 ```
+
+
+```{r}
+EstadísticosHogar %>% kable(
+    format = "html",
+    digits = 2,
+    caption = "Estadístico de ingresos por hogar"
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = F,
+    position = "center"
+  )
+```
+
 
 
 ```{r}
@@ -258,7 +293,7 @@ En el histograma, podemos observar que la mayoría de los hogares poseen ingreso
 
 **3.** Realice un gráfico nube de puntos de los ingresos mensuales por hogar versus el número de individuos por hogar. ¿Qué observa?
 
-Es importante hacer la claridad de que el gráfico de dispersión es de una variable discreta y una continua, no va generar una nube de punto, precisamente por la naturaleza de la variable "número de individuos". El gráfico se muestra a continuación. 
+Es importante hacer la claridad de que el gráfico de dispersión es de una variable discreta y una continua, no va generar una nube de puntos, precisamente por la naturaleza de la variable "número de individuos". El gráfico se muestra a continuación. 
 
 ```{r}
 Datos_unidos <- inner_join(Conteo_Hogar, Ingreso_mensual, by = "DIRECTORIO")
@@ -373,16 +408,17 @@ IngresoDepartamento %>%
 
 Basado en el mapa realizado se dan algunas observaciones:
 
-- Aquellos departamentos que poseen un menor ingreso promedio por hogar, son: Amazonas, Caquetá, Cauca, Putumayo, Gaugira, Arauca, Córdoba y Sucre. Principalmente se observa que los menores ingresos son en departamentos perifericos.
+- Aquellos departamentos que poseen un menor ingreso promedio por hogar son: Amazonas, Caquetá, Cauca, Putumayo, Guajira, Arauca, Córdoba y Sucre. Principalmente se observa que los menores ingresos son en departamentos periféricos.
 
-- Departamentos que tiene salidas al Océano Pacífico, límites con Venezuela o Brasil, tienen un poco mejores a los departamentos anteriores, pero siguen siendo bajos en comparación con el resto del país.
+- Departamentos que tiene salidas al Océano Pacífico, límites con Venezuela o Brasil, tienen mejores ingresos a los departamentos anteriores, pero siguen siendo bajos en comparación con el resto del país.
 
 - Departamentos centrales reflejan ingresos promedio por hogar más altos, como Cundinamarca, Boyacá, Santander, Antioquia y Valle del Cauca.
 
 
 **5.** Para el departamento con mayores ingresos mensuales promedio por hogar, considere los ingresos mensuales promedio por municipio y realice un mapa con colores por 3 categorías (definidas por usted) e incluyendo la respectiva leyenda.
 
-Basado en los cálculos, el departamento con mayores ingresos es San Andres y Providencia. Este departamento solo cuenta con 3 municipios, entonces para realizar el ejercicio y que se pueda ilustrar de mejor manera, se elegirá el segundo departamento en el cual el ingreso promedio sea el más alto. Basado en los cálculos realizados, este departamento es Meta, si se ignora que Bogotá D.C. es un distrito capital y no un departamento propiamente dicho.
+Basado en los cálculos, el departamento con mayores ingresos es San Andres y Providencia. Este departamento solo cuenta con 3 municipios, entonces para realizar el ejercicio y que se pueda ilustrar de mejor manera, se elegirá el segundo departamento en el cual el ingreso promedio sea el más alto. Basado en los cálculos realizados, este departamento es Meta, ignorando a Bogotá D.C. ya que es un distrito capital y no un departamento propiamente dicho.
+
 
 ```{r}
 # Se crea el mapa del Meta
@@ -473,7 +509,7 @@ A continuación se dan algunos comentarios sobre el mapa:
 
 - Los municipio con mayores ingresos se encuentran en la parte centro-norte del departamento.
 
-- Es esperable que la capital del departamento (Villavicencio, se encuentre entre los cuantiles superiores),lo cual es esperable ya que las capitales suelen concentrar la actividad económica y los ingresos más altos. 
+- Es esperable que la capital del departamento (Villavicencio) se encuentre entre los cuantiles superiores, ya que las capitales suelen concentrar la actividad económica y los ingresos más altos. 
 
 - Los municipios con los ingresos promedio más bajos (el cuartil inferior) se observan predominantemente en las grandes áreas rurales y periféricas del departamento.
 
@@ -496,7 +532,7 @@ ggpairs(
 
 **Conclusiones**
 
-- En la diagonal podemos observar la distribución de cada una de las variables analizada (costo de los servicios en cuestión). Allí vemos que la distribución del costo es muy asimetrica y sesgada a la izquierda, concentrada en valores muy pequeños. 
+- En la diagonal podemos observar la distribución de cada una de las variables analizadas (costo de los servicios en cuestión). Allí vemos que la distribución del costo es muy asimetrica y sesgada a la izquierda, concentrada en valores muy pequeños. 
 
 - En general, se observa una tendencia ligeramente positiva en la mayoría de los gráficos. Esto significa que, a medida que el costo/consumo de un servicio aumenta, el del otro también tiende a aumentar.
 
@@ -507,7 +543,7 @@ ggpairs(
 
 **b.** Calcule los costos totales de servicios analizados anteriormente para cada uno de los hogares, luego realice un mapa del costo promedio en servicios por departamento. Coloreando en tres tonos, (rojo, amarillo y verde). Rojo para los costos más altos y verde para los menores
 
-Nuevamente para elegir los puntos de corte, se tomará el promedio por departamento y se encontrarán tres cuantiles. 
+Nuevamente para elegir los puntos de corte, se tomará el promedio por departamento y se encontrarán dos cuantiles. 
 
 ```{r}
 FuerzaTrabajo %<>% 
@@ -588,7 +624,7 @@ A continuación se dan algunas observaciones por región del país:
 
 - Los departamentos en la costa Caribe (como La Guajira, Magdalena, Atlántico, Bolívar, Sucre) y algunos de la Región Andina del norte (como Cesar y Norte de Santander) presentan el mayor costo promedio de servicios (rojo). Esto sugiere que los hogares en estas zonas tienen el consumo o las tarifas más altas del país.
 
-- Departamentos con alta densidad de población y actividad económica, como Antioquia, el Eje Cafetero (Caldas, Risaralda, Quindío), y otros en el centro (como Valle del Cauca, Cauca, Huila, Tolima, Cundinamarca/Bogotá - aunque este último no tiene el contorno claro, se infiere su color por la posición) caen principalmente en el rango intermedio (amarillo).
+- Departamentos con alta densidad de población y actividad económica, como Antioquia, el Eje Cafetero (Caldas, Risaralda, Quindío), y otros en el centro (como Valle del Cauca, Cauca, Huila, Tolima, Cundinamarca/Bogotá) caen principalmente en el rango intermedio (amarillo).
 
 - La gran mayoría de los departamentos de la Orinoquía (Meta, Vichada, Casanare, Arauca) y la Amazonía (Caquetá, Guaviare, Putumayo, Amazonas, Vaupés, Guainía) están en el rango de menor gasto promedio (verde). Esto podría deberse a una combinación de factores como menor densidad poblacional, menor desarrollo de infraestructura de servicios en algunas áreas, o diferencias en el tipo de servicios disponibles y sus tarifas.
 
@@ -599,6 +635,7 @@ A continuación se dan algunas observaciones por región del país:
 
 **a.** ¿Los hogares que tienen mayores ingresos tienden a pagar más por el servicio de salud?
 
+Para responder a esta pregunta, haremos un gráfico de dispersión del Ingreso por hogar versus el costo del servicio de salud. 
 
 ```{r}
 BD7a <- full_join(x=Ingreso_mensual, y = Salud[, c("DIRECTORIO", "SECUENCIA_ENCUESTA", "SECUENCIA_P", "P8551")]) %>% 
@@ -652,7 +689,16 @@ BD7b <- inner_join(x=BD7b,y=Salud[,c("DIRECTORIO", "SECUENCIA_ENCUESTA", "SECUEN
 ```
 
 ```{r}
-BD7b
+BD7b %>% kable(
+    format = "html",
+    digits = 2,
+    caption = "Ingreso promedio segregado por medicina prepagada"
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = F,
+    position = "center"
+  )
 ```
 
 
@@ -700,7 +746,17 @@ BD7c %>% ggplot(aes(x=as.factor(P6127), y=Ingreso_hogar)) +
 
 
 ```{r}
-EstadisticosBD7D
+EstadisticosBD7D %>% 
+  kable(
+    format = "html",
+    digits = 2,
+    caption = "Ingreso del Hogar según Calidad de la salud"
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = F,
+    position = "center"
+  )
 ```
 
 
@@ -708,7 +764,7 @@ EstadisticosBD7D
 
 Sí, existe una relación entre el estado de salud percibido y el ingreso del hogar. Esto significa que: A Mejor Estado de Salud $\rightarrow$ Mayor Ingreso: Los hogares donde se percibe un estado de salud como "Muy Bueno" tienen el ingreso promedio más alto ($3.148.712	 COP$). A Peor Estado de Salud $\rightarrow$ Menor Ingreso: Los hogares donde se percibe un estado de salud como "Malo" tienen el ingreso más bajo ($2.187.159 COP$).
 
-El Ingreso Influye en la Salud: Un mayor ingreso permite a los hogares acceder a mejores condiciones de vida (vivienda, nutrición, ocio), entornos más seguros y, como vimos en tu dato anterior, a servicios de salud privados (medicina prepagada), lo que se traduce en un mejor estado de salud percibido.
+El Ingreso Influye en la Salud: Un mayor ingreso permite a los hogares acceder a mejores condiciones de vida (vivienda, nutrición, ocio), entornos más seguros y, como vimos anteriormente, a servicios de salud privados (medicina prepagada), lo que se traduce en un mejor estado de salud percibido.
 
 **d.** Que tanto se preocupan las familias por su salud según su nivel de ingresos. Para ellos tome en cuenta el número de consultas realizadas durante el año (odontología, psicología, etc.)
 
@@ -724,7 +780,7 @@ Para responder a esta pregunta, se tomará como medida la cantidad de consultas 
 
 - Psicología
 
-En cada una de estas, si la persona asistió a una dependencia entonces se sumará una unidad a una nueva varible llamada Prevention, así el que no haya consultado ninguna tendrá el valor de 0 y el que las haya consultado a todas tendrá el valor de 5. Los demás valores serán entre 0 y 5. 
+En cada una de estas, si la persona asistió a una dependencia entonces se sumará una unidad a una nueva variable llamada Prevention, así el que no haya consultado ninguna vez tendrá el valor de 0 y el que las haya consultado a todas tendrá el valor de 5. Los demás valores serán entre 0 y 5. 
 
 ```{r}
 Salud$Prevention <- rowSums(Salud[, c("P1699S1", "P1699S3", "P1699S2", "P1699S4", "P1699S5")] == 1)
@@ -749,71 +805,281 @@ BD7d %>% ggplot(aes(x=as.factor(Prevention), y=Ingreso_hogar)) +
 A continuación se dan algunos comentarios al respecto:
 
 
-- Se observa una tendencia ligeramente creciente en la mediana del ingreso a medida que aumenta la Puntuación de Prevention, especialmente al pasar de 0 a 5. Esto sugiere que los hogares con mayores ingresos tienen una ligera tendencia a realizar más consultas (mayor Prevention), lo que se asocia con una mayor preocupación o capacidad para actuar en materia de salud preventiva.
+- Se observa una tendencia ligeramente creciente en la mediana del ingreso a medida que aumenta la Puntuación de Prevention, especialmente al pasar de 0 a 5. Esto sugiere que los hogares con mayores ingresos tienen una ligera tendencia a realizar más consultas (mayor prevención), lo que se asocia con una mayor preocupación o capacidad para actuar en materia de salud preventiva.
 
-- La longitud de la caja es similar en todos los grupos, lo que indica que la variabilidad de los ingresos de la mitad central de las familias (entre el percentil 25 y 75) es relativamente constante independientemente de su nivel de Prevention.
+- La longitud de la caja es similar en todos los grupos, lo que indica que la variabilidad de los ingresos de la mitad central de las familias (entre el percentil 25 y 75) es relativamente constante independientemente de su nivel de prevención
 
 - El gráfico soporta la hipótesis de que el acceso a recursos económicos facilita las acciones de prevención, pero la conducta de prevención (realizar 0 a 5 consultas) sigue siendo ampliamente distribuida a través de todos los niveles de ingresos, mostrando una fuerte variabilidad interna en cada grupo.
 
 
-**f.** Con la base de datos "servicios del hogar" analice la correspondencia entre el número de integrantes del hogar con el número de cuartos. (Hacer una tabla de contingencia)
+**f.** Con la base de datos "servicios del hogar" analice la correspondencia entre el número de integrantes del hogar con el número de cuartos donde duermen. (Hacer una tabla de contingencia)
 
+Para este item, se hace un inner_join de la base de datos que contiene el conteo de personas por hogar versus la cantidad de cuartos que posee el hogar. 
 
+```{r}
+BD7f <- inner_join(x=Servicios_Hogar[, c("DIRECTORIO", "SECUENCIA_ENCUESTA", "SECUENCIA_P", "P5010")],
+                  y=Conteo_Hogar) %>% distinct()
+```
 
+```{r}
+BD7f %$% table(P5010, Num_Individuos) %>% 
+  kable(
+    format = "html",
+    digits = 2,
+    caption = "Tabla de contingencia de numero de integrantes vs habitaciones"
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = F,
+    position = "center"
+  )
+```
 
+**Observaciones**
+
+- Filas (P5010): Número de cuartos donde duermen (desde 1 hasta 29 cuartos).
+
+- Columnas (Num_Individuos): Número de integrantes del hogar (desde 1 hasta 24 individuos)
+
+- El patrón más claro es la concentración de datos en la esquina superior izquierda, lo que refleja las situaciones habitacionales más comunes, lo demás refleja casos raros (por ejemplo, que en 4 habitaciones duerman 18 personas)
+
+- 1 Cuarto: La mayoría de los hogares de 1 o 2 individuos duermen en un solo cuarto (17,089 y 14,319 hogares respectivamente). Esto sugiere que un solo cuarto es la norma para parejas o personas solas.
+
+- 2 Cuartos: La mayor frecuencia se encuentra en hogares de 3 y 4 individuos (12,070 y 7,159 hogares).
+
+- 3 Cuartos: La mayor frecuencia se encuentra en hogares de 4 y 5 individuos (4,210 y 2,290 hogares).
+
+Las observaciones anteriores reflejan situaciones típicas de los hogares, pero existen situaciones extremas como:
+
+- Hacinamiento Potencial (Pocos Cuartos para Muchos Individuos)
+
+- Exceso de Espacio (Muchos Cuartos para Pocos Individuos)
+
+La tabla confirma la expectativa de que el tamaño del hogar es el principal predictor del número de cuartos utilizados para dormir. La distribución de frecuencias sigue un patrón diagonal, reforzando la idea de que la planificación de espacios para dormir está directamente ligada a la cantidad de personas que residen en la vivienda.
 
 
 **g.** Compare los gastos en servicios (acueducto, energía, gas, internet, telefonía) con los ingresos del hogar
 
 
+```{r}
+BD7g <- inner_join(Gasto_Servicios, Ingreso_mensual[,-c(4:5)], 
+                   by = join_by(DIRECTORIO, SECUENCIA_P))
+```
 
+```{r}
+correlacion_r7g <- cor(BD7g$Ingreso_hogar, BD7g$CostoServicios, use = "complete.obs")
+titulo_correlacion7g <- sprintf("Correlación: r = %.3f", correlacion_r7g)
 
+BD7g %>%
+  ggplot(aes(x = Ingreso_hogar, y = CostoServicios)) +
+  geom_point(aes(color = CostoServicios),alpha = 0.6) +
+  scale_color_viridis_c(option = "plasma",
+                        name = "Costo de los Servicios ($)") +
+  labs(title = paste("Relación entre Ingreso del Hogar y Costo de los Servicios", "\n", titulo_correlacion7g),
+       x = "Ingreso del Hogar ($)",
+       y = "Costo de los Servicios ($)") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    legend.title = element_text(size = 10)
+  )
+```
 
+**Conclusiones**
+
+-  El valor $r = 0.257$ indica una correlación positiva débil entre el Ingreso del Hogar y el Costo de los Servicios. Aunque la relación es positiva, lo que significa que a mayor ingreso, tiende a haber un costo de servicios ligeramente mayor, la fuerza de esta tendencia es muy baja. El ingreso solo explica una pequeña parte de la variación en el costo de los servicios
+
+- Para un mismo nivel de ingreso bajo o medio, el Costo de los Servicios puede variar desde cerca de cero hasta casi $1.500.000$ (o más). Esto subraya que la variable Costo de los Servicios tiene una alta variabilidad que no está ligada al ingreso.
+
+- La mayoría de los puntos son morados o azules oscuros (costos bajos, por debajo de $500.000$).
+
+- Los pocos puntos amarillos y naranjas (costos altos, cerca o por encima de $1.500.000$) se distribuyen por todo el rango de ingresos, incluyendo el punto más alto cerca de $2.500.000$ en un hogar con un ingreso medio-alto (alrededor de $7.500.000$).
 
 
 **h.** ¿De acuerdo al ingreso mensual como son las prácticas de reutilización del agua?
 
+Para este item tenga en cuenta que:
+
+- 1. Si
+
+- 2. No
+
+```{r}
+BD7h <- inner_join(x=Ingreso_mensual, Servicios_Hogar[,c("DIRECTORIO", "SECUENCIA_ENCUESTA", "SECUENCIA_P", "P5012S4")])
+```
+
+```{r}
+BD7h %>% ggplot(aes(fill=as.factor(P5012S4), x=Ingreso_hogar))+
+  geom_density(alpha = 0.5)+
+  labs(title = "Distribución del Ingreso del Hogar de acuerdo a si reutiliza el agua",
+       x = "Ingreso por hogar",
+       y = "Densidad",
+       fill = "¿Reutiliza el agua?")
+```
+
+**Conclusiones**
+
+- La gran mayoría de los hogares, tanto los que reutilizan como los que no, se concentran en el extremo inferior del eje X (ingresos bajos, entre $0$ y $2.5$ millones por hogar).
+
+- De acuerdo con el ingreso mensual, las prácticas de reutilización del agua son ligeramente más comunes en hogares de ingresos medios a medio-altos, y son menos comunes entre los hogares con ingresos más bajos.
+
+- Los hogares con los ingresos más bajos tienden a ser los que menos reutilizan el agua, quizás debido a la falta de espacio, infraestructura o conocimiento/tiempo
+
+- A medida que el ingreso aumenta hacia la media y más allá, la proporción de hogares que sí reutilizan el agua se vuelve marginalmente superior a la proporción de hogares que no lo hacen.
 
 
+**i.** Anteriormente se calculó el ingreso mensual por Hogar, este valor corresponde a determinar un ingreso mensual más realista para las personas (basado en ingresos como primas, subsidios, bonificaciones, etc). La base de datos de servicios contiene una variable denominada ingreso mensual total del hogar (I_HOGAR). La idea es comparar y observar las diferencias entre nuestro cálculo y el dado por la encuesta 
+
+```{r}
+BD7i <- inner_join(x=Ingreso_mensual[,c("DIRECTORIO","SECUENCIA_P", "Ingreso_hogar")], y=Servicios_Hogar[,c("DIRECTORIO", "SECUENCIA_P", "I_HOGAR")]) %>% 
+  distinct()
+```
+
+```{r}
+correlacion_r7i <- cor(BD7i$Ingreso_hogar, BD7i$I_HOGAR, use = "complete.obs")
+titulo_correlacion7i <- sprintf("Correlación: r = %.3f", correlacion_r7i)
+
+BD7i %>%
+  ggplot(aes(x = Ingreso_hogar, y = I_HOGAR)) +
+  geom_point(aes(color = I_HOGAR),alpha = 0.6) +
+  scale_color_viridis_c(option = "plasma",
+                        name = "Ingreso del hogar Calculado ($)") +
+  labs(title = paste("Comparación entre el calculo propio vs el de la encuesta", "\n", titulo_correlacion7i),
+       x = "Ingreso del Hogar (Calculado por nosotros) ($)",
+       y = "Ingreso del Hogar (Declarado por la Encuesta) ($)") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    legend.title = element_text(size = 10)
+  )
+```
+
+**Observaciones**
+
+- El valor $r = 0.776$ indica una correlación positiva fuerte entre nuestro cálculo de ingreso y el ingreso declarado en la encuesta. Existe un alto grado de acuerdo entre ambas medidas. En general, los hogares con un ingreso alto en el cálculo también declaran un ingreso alto en la encuesta, y viceversa. 
 
 
+- El Ingreso Declarado por la Encuesta (I_HOGAR) tiende a ser notablemente superior al Ingreso del Hogar Calculado (eje X), especialmente en los rangos de ingreso medios.
 
-
-
-**i.** Anteriormente se calculó el ingreso mensual por Hogar.  Compare y observe las diferencias con el valor dado en la base de datos sobre salud
-
-
-
-
-
+- El cálculo está logrando un valor de ingreso diferente, es posible que el valor de la encuesta está capturando un ingreso total que incluye otros componentes que inflan el valor. 
 
 
 **j.** ¿Cual es la satisfacción de los hogares con su ingreso comparando con el ingreso mensual que devengan?
+    
+
+```{r}
+BD7j <- inner_join(x=Ingreso_mensual[,c("DIRECTORIO","SECUENCIA_P", "Ingreso_hogar")],
+                   y=ComposicionHogar[,c("DIRECTORIO", "SECUENCIA_P", "P1896")]) %>% 
+  remove_missing() %>% filter(P1896!=99)
+```
+
+```{r}
+BD7j %>% ggplot(aes(x=as.factor(P1896), y=Ingreso_hogar)) +
+  geom_jitter(width = 0.2, alpha = 0.5, color = "gray50")+
+  geom_boxplot(aes(fill = as.factor(P1896)), 
+               alpha = 0.7, 
+               outlier.shape = NA)+
+  labs(title = "Distribución del Ingreso del Hogar según Satisfacción laboral",
+       x = "Puntuación de satifacción",
+       y = "Ingreso del Hogar",
+       fill = "Puntuación")
+```
+
+**Observaciones**
+
+- Se observa una clara tendencia creciente en la mediana del ingreso a medida que aumenta la puntuación de satisfacción. 
+
+- La mediana de ingreso para hogares Totalmente Satisfechos (Puntuación 10) es notablemente más alta que la mediana del grupo 0, 1, 2, o 3.
+
+- Las cajas (que representan el 50% central de los datos) tienen una longitud bastante similar a lo largo de todas las puntuaciones. Esto indica que la variabilidad de los ingresos bajos y medios es constante independientemente de si el hogar está satisfecho o insatisfecho
+
+La relación es positiva y evidente, lo que sugiere que el ingreso mensual devengado es un factor crítico para determinar el nivel de satisfacción con el propio ingreso. Sin embargo, la presencia de puntos altos en las cajas de satisfacción baja (0-4) muestra que otros factores (expectativas, comparación social, deudas, o el costo de vida) también influyen en la satisfacción personal. Esto es, que si una persona tiene gran cantidad de deudas, entonces tendrá una percepción mala sobre su ingreso porque lo considera insuficiente. 
+
+
+**k** ¿En correspondencia con el número de integrantes del hogar considera que el agua disponible es suficiente?
+
+Para este item tenga en cuenta que:
+
+- 1. Si
+
+- 2. No
+
+```{r}
+BD7k <- inner_join(x=Servicios_Hogar[, c("DIRECTORIO", "SECUENCIA_ENCUESTA", "SECUENCIA_P", "P3166")], y=Conteo_Hogar) %>% 
+  remove_missing()
+```
+
+```{r}
+BD7k %$% table(Num_Individuos, as.factor(P3166)) %>% 
+  as.data.frame() %>% 
+  mutate(P3166 = factor(Var2,
+                        levels = c("1", "2"),
+                        labels = c("Suficiente", "Insuficiente"))) %>% 
+  ggplot(aes(x = P3166, y = Num_Individuos)) +
+  geom_tile(aes(fill = Freq), color = "white", linewidth = 0.5) +
+  geom_text(aes(label = Freq), color = "black", size = 4) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", 
+                      name = "Número de Hogares") +
+  labs(
+    title = "¿Es suficiente el agua disponible según el tamaño del hogar?",
+    x = "Agua Disponible (P3166)",
+    y = "Número de Integrantes del Hogar"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+**Conclusiones**
+
+- En general, la columna "Suficiente" (0) tiene un color más oscuro (mayor número de hogares) que la columna "Insuficiente" (1) en casi todos los niveles. Esto significa que, la mayoría de los hogares, independientemente de su tamaño, perciben que el agua disponible es suficiente.
+
+- Hogares de 2 integrantes: 14,401 reportan suficiencia.
+
+- Hogares de 3 integrantes: 11,786 reportan suficiencia.
+
+- Contrario a la intuición, los hogares con un número muy alto de integrantes (8 o más) no son los que reportan insuficiencia de agua con mayor frecuencia. Los reportes de insuficiencia siguen el mismo patrón de distribución que el tamaño de la población: la mayoría de los reportes provienen de hogares de 2, 3 y 4 integrantes (4,988, 4,401 y 3,245 hogares, respectivamente).
+
+No hay una fuerte correspondencia positiva que indique que un mayor número de integrantes del hogar conduzca a una mayor percepción de insuficiencia de agua.
 
 
 
+**Conclusiones finales del trabajo**
 
+A partir de los resultados obtenidos del análisis de la Encuesta Nacional de Calidad de Vida (ECV) 2023, se establecen las siguientes conclusiones sobre la estructura, economía y desigualdad social en los hogares colombianos.
 
+**Composición e ingresos:**
 
+- Predominan los hogares pequeños: el 75% de los hogares tienen 4 o menos integrantes.
 
+- Hay una cantidad grande de outliers mostrando grandes diferencias con respecto al promedio en variables como el número de integrantes del hogar y su ingreso.
 
+- En 2023 La mayoría de los hogares tenían ingresos inferiores al salario mínimo ($1.3 millones), lo cual es altamente preocupante ya que este valor debe sostener a todo el hogar.
 
+- Aunque se observa una ligera tendencia de que más individuos implican más ingresos, esta muestra ser débil, lo que significa que en gran parte de estos hogares solo unos pocos miembros son los responsables de sobrellevar el sostenimiento constante.
 
+**Con respecto a las regiones del país:**
 
-**k** ¿En correspondencia con el número de integrantes del hogar considera que el agua disponible es suficiente (P3166 de la base de datos : "Servicios del hogar")?
+- Los menores ingresos se concentran en los departamentos con menor desarrollo económico centralizado, como Amazonas, Cauca, La Guajira, Córdoba y Sucre.
+- Los ingresos más altos se reflejan en los departamentos con fuerte actividad económica, manufacturera y de servicios como Antioquia, Cundinamarca, Santander y Valle del Cauca.
 
+**En cuanto a gastos en servicios y salud:**
 
+- La región Caribe y el norte de la Andina (La Guajira, Atlántico, Bolívar, Sucre) presentan los costos promedio de servicios más altos.
 
+- Las grandes áreas de la Amazonía y la Orinoquía tienen el menor gasto, lo que puede reflejar menor acceso y desarrollo de infraestructura de servicios, no necesariamente mayor eficiencia.
 
+- Medicina Prepagada: El ingreso promedio de los hogares con medicina prepagada es de $4.49 millones, más del 2.5 veces el ingreso de quienes no la tienen, evidenciando que el acceso a la calidad de salud en Colombia está condicionado por la capacidad económica.
 
+- Los hogares que perciben su estado de salud como "Muy Bueno" tienen el mayor ingreso promedio, lo que sugiere que el ingreso influye directamente en las condiciones de vida y, por ende, en la salud.
 
-
-
-
-
-
-**Conclsuiones finales del trabajo**
-
+La integración de variables de composición, ingreso, salud y servicios, junto con el mapeo geográfico, no solo respondió a las preguntas planteadas, sino que también mostró importantes desafíos estructurales para el país.
 
 
 
